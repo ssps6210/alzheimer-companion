@@ -1,0 +1,10 @@
+# 跨平台換行控制：
+#  .sh 必須 LF —— 否則在 WSL/bash 執行會壞（\r 命令找不到）
+#  .bat / .ps1 用 CRLF —— Windows 原生
+* text=auto
+*.sh  text eol=lf
+*.py  text eol=lf
+*.yaml text eol=lf
+*.md  text eol=lf
+*.bat text eol=crlf
+*.ps1 text eol=crlf
