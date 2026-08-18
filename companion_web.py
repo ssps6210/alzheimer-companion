@@ -1133,7 +1133,18 @@ a.link{color:#26418f;font-weight:600;text-decoration:none}
 </div>
 
 <div class="card">
-  <h2>🗣 阿公的說話方式</h2>
+  <h2>① 🎙 設定陪伴聲音（音色）</h2>
+  <p class="hint"><b>第一次使用先做這個。</b>上傳一段<b>清楚、安靜、連續 10–30 秒</b>的人聲，長輩之後就會聽到「這個聲音」回應他。語氣一致比錄很長更重要（系統只取最好的約 24 秒）。支援 wav / mp3 / m4a。<br>逐字稿可<b>留空</b>——系統會自動辨識；填了更準。</p>
+  <div class="field">
+    <input type="file" id="voiceFile" accept="audio/*">
+    <input type="text" id="voiceText" placeholder="（選填）這段錄音說了什麼" style="flex:1;min-width:200px">
+    <button onclick="setVoice()" id="vbtn">設為陪伴聲音</button>
+  </div>
+  <div id="voiceMsg" class="note" style="display:none"></div>
+</div>
+
+<div class="card">
+  <h2>② 🗣 阿公的說話方式</h2>
   <p class="hint">「按住說話」＝按著講、放開送出（最不會誤觸）。「自動說話」＝點一下就開始，講完自動送出、小幫手回覆後自動再聽，適合手腳不方便、不好一直按的長輩。這裡設的是阿公畫面的<b>預設</b>；阿公畫面上也有小切換可自己換。</p>
   <div class="field">
     <button id="modeHold" onclick="setMode('hold')">按住說話</button>
@@ -1149,17 +1160,6 @@ a.link{color:#26418f;font-weight:600;text-decoration:none}
     <input type="text" id="prevText" placeholder="例如：阿公，該吃藥囉。" value="阿公，今天天氣真好，要記得多喝水喔。" style="flex:1;min-width:220px">
     <button onclick="preview()" id="pbtn">▶ 試聽</button>
   </div>
-</div>
-
-<div class="card">
-  <h2>🎙 設定陪伴聲音（音色）</h2>
-  <p class="hint">上傳一段<b>清楚、安靜、連續 10–30 秒</b>的人聲，長輩之後就會聽到「這個聲音」回應他。語氣一致比錄很長更重要（系統只取最好的約 24 秒）。支援 wav / mp3 / m4a。<br>逐字稿可<b>留空</b>——系統會自動辨識；填了更準。</p>
-  <div class="field">
-    <input type="file" id="voiceFile" accept="audio/*">
-    <input type="text" id="voiceText" placeholder="（選填）這段錄音說了什麼" style="flex:1;min-width:200px">
-    <button onclick="setVoice()" id="vbtn">設為陪伴聲音</button>
-  </div>
-  <div id="voiceMsg" class="note" style="display:none"></div>
 </div>
 
 <div class="card">

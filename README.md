@@ -28,6 +28,20 @@
 
 ---
 
+## 📱 畫面 · Screenshots
+
+<p align="center">
+  <img src="docs/screenshots/companion-day.png" width="31%" alt="長輩畫面（日）">
+  &nbsp;&nbsp;
+  <img src="docs/screenshots/companion-night.png" width="31%" alt="長輩畫面（夜）">
+</p>
+<p align="center"><sub>長輩的畫面：一顆大按鈕，日／夜自動切換，閒置時放老照片。<br><i>The elder's screen — one big button, auto day/night, idle shows old photos.</i></sub></p>
+
+<p align="center"><img src="docs/screenshots/setup.png" width="72%" alt="家人設定台 /setup"></p>
+<p align="center"><sub>家人設定台 <code>/setup</code>：第一步就是「上傳你要的聲音」，設定簡潔、家人自己就能弄。<br><i>The family console — step one is uploading the voice you want. Simple enough for any family member.</i></sub></p>
+
+---
+
 ## ✨ 為什麼這樣設計 · Design principles
 
 | | |
