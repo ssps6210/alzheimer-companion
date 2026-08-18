@@ -1,0 +1,59 @@
+════════════════════════════════════════════════════════════
+  上傳 / 推送前隱私檢查清單（每次 push 前跑一遍）
+  Elder Voice Companion — pre-push privacy checklist
+════════════════════════════════════════════════════════════
+
+【鐵律】
+  任何「人的聲音、臉、對話內容、金鑰」都不進版本庫。
+  repo 只放：程式 + 通用範本 + 說明。聲音由使用者自己在 /setup 上傳。
+
+
+──────────────────────────────────────────────────────────
+  一、絕對不可提交（已由 .gitignore 擋住，別手動用 git add -f 加進去）
+──────────────────────────────────────────────────────────
+  ▸ 任何人的聲音檔    *.wav  *.mp3  *.m4a  *.aac  *.flac  *.ogg
+  ▸ 原始家人錄音      recordings/
+  ▸ 使用者上傳的音色  voices/  （含 active_reference.*）
+  ▸ 參考音 + 逐字稿   father_reference.*  reference_*  *_trimmed.wav
+  ▸ 長輩老照片        photos/
+  ▸ 測試音 / 頻譜圖   samples/
+  ▸ 對話記憶（隱私）  memory.json
+  ▸ 金鑰 / 密鑰       .env   .env.*（只留 .env.example）   *.key  *.pem
+  ▸ 執行期狀態        ui_state.json
+  ▸ 舊實驗檔          legacy/
+  ▸ 模型 / 大檔       models/  *.pt  *.onnx  *.zip
+
+
+──────────────────────────────────────────────────────────
+  二、每次 push 前，在專案目錄跑這三步驗證
+──────────────────────────────────────────────────────────
+  1) 有沒有敏感檔會被提交（正常＝無輸出）：
+     git add -A -n | grep -iE "recordings/|samples/|voices/|photos/|\.wav|\.mp3|\.m4a|\.aac|father_reference|memory\.json|(^| )\.env('|$)|ui_state|active_reference"
+
+  2) 有沒有硬編碼金鑰（比 gitignore 更重要！正常＝無輸出，nvapi-xxx 佔位字除外）：
+     git add -A -n | sed "s/^add '//;s/'$//" | while read f; do [ -f "$f" ] && \
+       grep -HnaE "nvapi-[A-Za-z0-9]|tp-[a-z0-9]{20}|sk-[A-Za-z0-9]{10}|sk_(test|live)_|ghp_[A-Za-z0-9]|xoxb-|[0-9]{9,10}:[A-Za-z0-9_-]{35}" "$f"; done
+
+  3) .env 有被擋、範本有保留：
+     git check-ignore .env  && echo ".env 有擋 OK"
+     git check-ignore .env.example || echo ".env.example 有保留 OK"
+
+
+──────────────────────────────────────────────────────────
+  三、gitignore 擋不住、要「人工看一眼」的
+──────────────────────────────────────────────────────────
+  ▸ conf.yaml 的 persona 有沒有寫進家人真名 / 私事？
+      有 → 改成通用，或另開 conf.example.yaml 提交、真的 conf.yaml 加進 .gitignore
+  ▸ docs/ 裡的稿子、截圖有沒有家人名字？
+  ▸ commit 訊息、路徑截圖裡有沒有個人資訊？
+
+
+──────────────────────────────────────────────────────────
+  四、最容易犯的致命錯
+──────────────────────────────────────────────────────────
+  ▸ .gitignore 規則「行尾不能加 # 註解」——會讓整行失效。註解要獨立一行。
+  ▸ 千萬別在把 .env 加進 .gitignore *之前* 就 commit 過它。
+      若不小心 commit 過 → git 歷史會永遠留著，光刪檔沒用，
+      要用 git filter-repo（或 BFG）清歷史，並輪替那把金鑰。
+  ▸ 金鑰一旦曾出現在任何公開處（含截圖 / 聊天）→ 當作已外洩，去平台輪替。
+════════════════════════════════════════════════════════════

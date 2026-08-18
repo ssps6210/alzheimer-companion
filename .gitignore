@@ -1,0 +1,69 @@
+# ── 機密（絕對不能提交）────────────────────────────────
+.env
+*.key
+*.pem
+
+# ── 對話記憶（含阿公的私人對話，隱私，不進版本庫）──────
+memory.json
+
+# ── 個人媒體：家人聲音 / 阿公照片 / 原始錄音，屬隱私，絕不進版本庫 ──
+# （注意：gitignore 不支援行尾註解，規則後面不能接 #，否則整行失效）
+# 原始家人錄音（爸媽 + 阿公）— 最敏感
+recordings/
+# 測試音 + 頻譜圖等分析產物
+samples/
+# 使用者自己塞的參考音（每個人各自的，不入庫）
+voices/
+# 阿公老照片
+photos/
+father_reference.wav
+father_reference.txt
+reference_*.wav
+reference_*.txt
+*_trimmed.wav
+# 保險：任何人聲音檔一律不入庫（本專案不該提交任何聲音）
+*.wav
+*.mp3
+*.m4a
+*.aac
+*.flac
+*.ogg
+# 若日後要附一段 CC0 示範音當預設，再用 !demo_voice.wav 例外放行
+
+# ── Python ─────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+.pytest_cache/
+
+# ── 模型 / 大型檔案（從官方下載，不入庫）──────────────
+models/
+*.pt
+*.onnx
+*.zip
+
+# ── 作業系統 / 編輯器 ──────────────────────────────────
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.log
+
+# 註：phrases/phrases.json 與 phrases/README.md 會被保留（只忽略音檔）。
+#     conf.yaml 預設會提交（不含金鑰）；若放了個人內容，可自行加入忽略。
+
+# 舊實驗檔（本地保留，不公開，避免 setup_log 等含個人路徑）
+legacy/
+
+# 執行期狀態（本機各自不同、會變，不入庫；程式缺檔會用內建預設）
+ui_state.json
+# .env 變體（保險：任何 .env.* 都不入庫，只留範本）
+.env.*
+!.env.example
+# 編輯器暫存 / 交換檔
+*.swp
+*.swo
+*~

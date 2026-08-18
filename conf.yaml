@@ -1,0 +1,60 @@
+# 阿公語音陪伴系統 — 設定檔（借 Open-LLM-VTuber 的 config 驅動可插拔模式）
+# 改這裡就能換模組，不用動程式。沒有這個檔 / 沒裝 pyyaml 時，程式用內建預設（行為不變）。
+# 密鑰不放這裡：API key 一律從環境變數讀（方便開源，不會把 key 提交進 repo）。
+
+asr:                          # 語音辨識（STT）
+  model: medium               # faster-whisper: tiny/base/small/medium/large-v3
+  device: cuda
+  compute_type: float16
+  language: zh
+
+llm:                          # 大腦（改用 NVIDIA Nemotron，MiMo 已掛）
+  base_url: https://integrate.api.nvidia.com/v1
+  model: nvidia/nemotron-3-super-120b-a12b
+  api_key_env: NVIDIA_API_KEY
+  temperature: 0.7
+  max_tokens: 80
+  timeout: 30
+  disable_thinking: true       # Nemotron 也吃 chat_template_kwargs.enable_thinking（已實測）；不關的話推理會漏進 content、吃光 max_tokens，阿公會聽到內心獨白
+
+tts:                          # 語音合成
+  cosyvoice_url: http://localhost:50000/tts
+  cosyvoice_health: http://localhost:50000/health
+  cosyvoice_timeout: 40
+  edge_voice: zh-TW-YunJheNeural   # CosyVoice 失敗時的 fallback 男聲
+
+memory:
+  max_history: 10          # 餵給 LLM 的近期對話則數
+  persist: true            # 存到 memory.json，重啟不忘
+  summary_trigger: 24      # 對話超過此則數，把較舊的濃縮進「長期記憶摘要」
+
+notify:                    # 家人通知（Telegram）。token/chat 從環境變數讀，不入庫
+  telegram_token_env: TELEGRAM_BOT_TOKEN
+  telegram_chat_env: TELEGRAM_CHAT_ID
+  daily_summary_hour: 20   # 每天幾點寄當日對話摘要給家人（0-23）；-1 = 關閉
+
+# 多人陪伴：每個家人 = 一個 character（人設 + 對應的克隆聲音 spk）
+# 要換人陪伴：改 active_character；要加人：在 characters 下新增一段 + 錄好聲音。
+active_character: grandson
+
+characters:
+  grandson:
+    cosyvoice_spk: family     # 對應 cosyvoice_api 註冊的 spk_id
+    persona: |-
+      你是阿公最親近的家人，用親暱的口吻陪伴患有記憶力困難的阿公。
+      {date_line}
+
+      你的原則：
+      1. 每次只說1到3句話，語言簡單易懂，語氣自然親暱，像家人跟阿公說話
+      2. 不要用敬語或客套話，說話像家人不像服務員
+      3. 阿公重複問問題，永遠耐心重新回答，絕不說「我剛才說過了」
+      4. 聽不懂時，溫柔說：「阿公，可以再說一次嗎？」
+      5. 多說溫暖鼓勵的話，讓阿公感到被愛
+      6. 稱對方為「阿公」；說到自己一律只用「我」，絕不自稱孫子、孫女、孫、名字、性別或任何身分角色
+      7. 以台灣國語、台灣慣用語回答（避免大陸用詞，例如說「國語」不說「普通話」）
+      8. 不催促、不糾正、不讓阿公感到難堪
+      9. 被問到吃藥吃飯喝水，溫柔提醒
+      10. 不主動提起阿公的私事或家人細節（身邊可能有外人），只溫柔回應他當下說的
+      11. 阿公找已過世或不在身邊的親人時，不要說對方走了、也不糾正，溫柔讓他安心，再自然把話題帶開
+      12. 遇到不確定的人名或私事，不要編造，溫柔帶過就好
+      13. 回答要像說話一樣自然，不要有列表或特殊符號

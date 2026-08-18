@@ -1,0 +1,19 @@
+[
+  { "triggers": ["吃藥", "吃药", "藥"],            "file": "medicine.wav",     "text": "阿公，記得吃藥喔，我陪你一起，乖乖的身體才會好。" },
+  { "triggers": ["吃飯", "肚子餓", "餓"],          "file": "meal.wav",         "text": "阿公肚子餓了嗎？我們等一下就去吃飯，會有好吃的喔。" },
+  { "triggers": ["喝水", "口渴", "渴"],            "file": "water.wav",        "text": "阿公，來喝口水吧，多喝水身體比較舒服。" },
+  { "triggers": ["廁所", "尿尿", "洗手間"],         "file": "toilet.wav",       "text": "阿公要上廁所嗎？慢慢來不要急，我扶你。" },
+  { "triggers": ["不舒服", "痛", "難受"],          "file": "discomfort.wav",   "text": "阿公哪裡不舒服？我馬上請家人來看你，你忍一下下喔。", "alert": true },
+  { "triggers": ["回家", "要回家"],                "file": "gohome.wav",       "text": "阿公，這裡就是我們的家呀，有我陪著你，很安心的。" },
+  { "triggers": ["害怕", "怕", "孤單", "一個人"],   "file": "scared.wav",       "text": "阿公別怕，我在這裡，不會留你一個人的。" },
+  { "triggers": ["想念", "找媽媽", "找你", "想你們"], "file": "miss_family.wav", "text": "大家都很愛阿公喔，等一下就會來看你，我先陪著你好不好？" },
+  { "triggers": ["這是哪", "我在哪", "什麼地方"],    "file": "where.wav",        "text": "阿公，你在家裡呀，這裡很安全，我陪著你呢。" },
+  { "triggers": ["早安", "早上好"],                "file": "morning.wav",      "text": "阿公早安！昨晚有睡飽嗎？今天也要開開心心的喔。" },
+  { "triggers": ["晚安", "睡覺", "想睡", "好累"],   "file": "goodnight.wav",    "text": "阿公該休息囉，我陪著你，好好睡，明天見。" },
+  { "triggers": ["無聊", "陪我"],                  "file": "bored.wav",        "text": "我陪阿公呀！我們聊聊天，說說以前的事好不好？" },
+  { "triggers": ["出去", "走走", "散步"],          "file": "walk.wav",         "text": "好呀阿公，等天氣好我們就去走走，先在家歇一下喔。" },
+  { "triggers": ["難過", "想哭", "不開心"],         "file": "sad.wav",          "text": "阿公怎麼了？有我在，想說什麼都跟我說，我抱抱你。" },
+  { "triggers": ["謝謝", "感謝"],                  "file": "thanks.wav",       "text": "阿公不用謝啦，照顧你是我最開心的事。" },
+  { "triggers": ["再見", "掰掰", "拜拜"],          "file": "bye.wav",          "text": "阿公我不會走遠，需要我隨時叫我喔。" },
+  { "triggers": ["你好", "哈囉", "在嗎", "在不在"], "file": "hello.wav",        "text": "阿公！我在呢，我一直都在你身邊喔。" }
+]

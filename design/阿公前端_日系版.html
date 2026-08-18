@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>阿公的小幫手</title>
+<style>
+/* ============================================================
+   阿公語音陪伴 · 日系優雅簡約溫暖版（原型）
+   設計語言：原研哉／無印 — 和紙留白(間)、墨色、柿色暖調、極度克制
+   DOM 契約與正式版一致（#clock #date #wave/.bar #status
+   #user-box #reply-box #btn.listening/.processing），方便原封搬回。
+   ============================================================ */
+:root{
+  /* —— 日：和紙暖白 —— */
+  --bg1:#F3ECDD; --bg2:#EAE0CC;          /* 紙底，極淡直向漸層 */
+  --ink:#3B342A;                          /* 墨（非純黑，帶暖） */
+  --ink-soft:#8C8069;                     /* 次要墨 */
+  --accent:#C0673B;                       /* 柿色 */
+  --accent-deep:#A44A2B;                  /* 錄音中的朱 */
+  --surface:rgba(255,255,255,.42);        /* 你說的話 */
+  --surface-reply:rgba(192,103,59,.12);   /* 小幫手回應 */
+  --line:rgba(59,52,42,.10);
+  --btn-fg:#FBF6EC;
+  --dot:rgba(59,52,42,.16);
+}
+body.night{
+  /* —— 夜：墨色暖夜 —— */
+  --bg1:#221E19; --bg2:#171410;
+  --ink:#ECE2D0; --ink-soft:#9C9078;
+  --accent:#D89A5B;                        /* 夜裡的暖琥珀 */
+  --accent-deep:#C97B44;
+  --surface:rgba(255,255,255,.06);
+  --surface-reply:rgba(216,154,91,.14);
+  --line:rgba(236,226,208,.10);
+  --btn-fg:#241F18;
+  --dot:rgba(236,226,208,.16);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%}
+body{
+  background:linear-gradient(180deg,var(--bg1),var(--bg2));
+  color:var(--ink);
+  font-family:"Noto Serif TC","Songti TC","Source Han Serif TC","Yu Mincho","Hiragino Mincho ProN",serif;
+  height:100dvh;display:flex;flex-direction:column;overflow:hidden;
+  user-select:none;-webkit-tap-highlight-color:transparent;
+  transition:color .8s ease;
+  position:relative;
+}
+/* 極淡和紙紋理（自帶 SVG 噪點，不外連） */
+body::before{
+  content:"";position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.5;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/><feColorMatrix type='saturate' values='0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/></svg>");
+  mix-blend-mode:multiply;
+}
+body.night::before{mix-blend-mode:screen;opacity:.35}
+
+/* —— 時鐘與日期（現實定向，對失智長者是療癒） —— */
+#clock{
+  text-align:center;padding:4vh 0 0;line-height:1;z-index:1;
+  font-family:"Noto Sans TC","PingFang TC",-apple-system,sans-serif;
+  font-size:15vw;font-weight:200;letter-spacing:.02em;color:var(--ink);
+  font-variant-numeric:tabular-nums;
+}
+#greet{text-align:center;font-size:5.4vw;color:var(--accent);letter-spacing:.28em;
+  padding:1.4vh 0 .4vh;z-index:1;font-weight:500}
+#date{text-align:center;font-size:4.4vw;color:var(--ink-soft);letter-spacing:.16em;z-index:1}
+
+/* —— 中段：波形 / 狀態 / 對話 —— */
+#mid{flex:1;min-height:0;display:flex;flex-direction:column;justify-content:center;
+     align-items:center;gap:1.6vh;padding:0 8vw;overflow:hidden;z-index:1}
+#wave{display:flex;align-items:center;justify-content:center;gap:10px;height:46px}
+.bar{width:6px;height:8px;background:var(--dot);border-radius:3px;transition:height .09s ease}
+.bar.on{background:var(--accent)}
+#status{text-align:center;font-size:5.2vw;color:var(--ink-soft);
+  min-height:1.5em;line-height:1.6;letter-spacing:.06em}
+#user-box{display:none;max-width:100%;background:var(--surface);
+  border:1px solid var(--line);border-radius:20px;
+  padding:1.6vh 5.5vw;font-size:4.4vw;color:var(--ink-soft);line-height:1.6;letter-spacing:.04em}
+#reply-box{display:none;max-width:100%;background:var(--surface-reply);
+  border-radius:22px;padding:2.2vh 5.5vw;font-size:5.4vw;color:var(--ink);
+  line-height:1.65;letter-spacing:.04em;box-shadow:0 2px 20px rgba(0,0,0,.04)}
+
+/* —— 唯一的大按鈕 —— */
+#btn{
+  margin:0 6vw 3.5vh;height:13vh;min-height:112px;flex-shrink:0;z-index:1;
+  border:none;border-radius:30px;cursor:pointer;
+  font-family:inherit;font-size:7.4vw;font-weight:600;letter-spacing:.5em;
+  text-indent:.5em;color:var(--btn-fg);
+  background:var(--accent);
+  box-shadow:0 10px 30px rgba(160,74,43,.22),inset 0 1px 0 rgba(255,255,255,.18);
+  transition:transform .12s ease,background .3s ease,box-shadow .3s ease;
+}
+#btn:active{transform:scale(.985)}
+#btn.listening{background:var(--accent-deep);letter-spacing:.35em;
+  box-shadow:0 0 0 8px rgba(164,74,43,.14),0 10px 30px rgba(164,74,43,.28)}
+#btn.processing{background:var(--ink-soft);color:var(--btn-fg);
+  pointer-events:none;box-shadow:none;opacity:.85}
+
+/* —— 模式小切換：按住說話 / 自動說話（家人也能在 Setup 台設預設） —— */
+#modeSw{display:flex;align-self:center;flex-shrink:0;margin:0 0 1.6vh;z-index:1;
+  background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:5px}
+#modeSw .ms{border:none;background:transparent;color:var(--ink-soft);font-family:inherit;
+  font-size:3.7vw;letter-spacing:.1em;padding:1vh 6.5vw;border-radius:999px;cursor:pointer;
+  transition:background .25s,color .25s;-webkit-tap-highlight-color:transparent}
+#modeSw .ms.active{background:var(--accent);color:var(--btn-fg);font-weight:600}
+
+/* —— 閒置：阿公的老照片慢速輪播（懷舊療法） —— */
+#idle{position:fixed;inset:0;z-index:5;opacity:0;pointer-events:none;
+  transition:opacity 1.6s ease;background:var(--bg2)}
+#idle.show{opacity:1;pointer-events:auto}
+.photo{position:absolute;inset:0;opacity:0;transition:opacity 2.4s ease;
+  background-size:cover;background-position:center;
+  animation:kenburns 26s ease-in-out infinite alternate}
+.photo.on{opacity:1}
+@keyframes kenburns{from{transform:scale(1.04) translate(0,0)}to{transform:scale(1.14) translate(-2%,-2%)}}
+#idle::after{content:"";position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(ellipse at center,transparent 55%,rgba(0,0,0,.30) 100%)}
+#idle .hint{position:absolute;left:0;right:0;bottom:6vh;text-align:center;
+  color:rgba(255,255,255,.82);font-size:4.2vw;letter-spacing:.2em;z-index:2;
+  text-shadow:0 2px 12px rgba(0,0,0,.5)}
+
+/* —— 預覽用小工具（正式版會移除，不給阿公看到） —— */
+#preview{position:fixed;top:10px;right:12px;z-index:20;display:flex;gap:8px;
+  font-family:sans-serif;opacity:.5}
+#preview button{font-size:14px;padding:6px 10px;border-radius:10px;border:1px solid var(--line);
+  background:var(--surface);color:var(--ink);cursor:pointer}
+</style>
+</head>
+<body>
+<!-- 閒置懷舊層（真照片放進來前用暖色占位，讓你先感受慢速輪播＋Ken Burns） -->
+<div id="idle">
+  <div class="photo" style="background:linear-gradient(135deg,#caa87e,#9c7b52)"></div>
+  <div class="photo" style="background:linear-gradient(135deg,#b98c6a,#7d5a44)"></div>
+  <div class="photo" style="background:linear-gradient(135deg,#a89e86,#6f6a56)"></div>
+  <div class="hint">〈 這裡會慢慢播放阿公的老照片 · 碰一下就回來 〉</div>
+</div>
+
+<div id="clock">--:--</div>
+<div id="greet"></div>
+<div id="date"></div>
+
+<div id="mid">
+  <div id="wave"><div class="bar"></div><div class="bar"></div><div class="bar"></div>
+    <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div></div>
+  <div id="status">我在這裡陪你</div>
+  <div id="user-box"></div>
+  <div id="reply-box"></div>
+</div>
+
+<div id="modeSw">
+  <button class="ms" data-mode="hold">按住說話</button>
+  <button class="ms" data-mode="auto">自動說話</button>
+</div>
+<button id="btn">按住說話</button>
+
+<!-- 預覽小工具（正式搬回時刪掉這段 + 對應 JS） -->
+<div id="preview">
+  <button onclick="window.__manualTheme=true;document.body.classList.toggle('night')">日／夜</button>
+  <button onclick="showIdle()">看閒置</button>
+</div>
+
+<script>
+/* ========== ① 真邏輯（會搬回正式版）：時鐘 + 早午晚安 + 自動日夜 ========== */
+const DAYS=['星期日','星期一','星期二','星期三','星期四','星期五','星期六'];
+function tick(){
+  const n=new Date();
+  const h=n.getHours(),m=n.getMinutes();
+  document.getElementById('clock').textContent=String(h).padStart(2,'0')+':'+String(m).padStart(2,'0');
+  document.getElementById('date').textContent=
+    n.getFullYear()+'年'+(n.getMonth()+1)+'月'+n.getDate()+'日　'+DAYS[n.getDay()];
+  document.getElementById('greet').textContent=
+    h<5?'夜深了':h<11?'早安　阿公':h<14?'午安　阿公':h<18?'午後好':'晚安　阿公';
+  // 自動日夜：18:00–06:00 走暖夜（除非預覽手動切過）
+  if(!window.__manualTheme){
+    document.body.classList.toggle('night', h>=18||h<6);
+  }
+}
+setInterval(tick,1000);tick();
+// 預覽手動切日夜時，停用自動
+document.querySelector('#preview button').addEventListener('click',()=>{window.__manualTheme=true;});
+
+/* ========== ② 真邏輯（會搬回）：閒置 → 老照片慢速輪播 ========== */
+const IDLE_MS=15000;   // 原型設 15 秒好演示；正式版建議 60–90 秒
+let idleTimer,photoTimer,pi=0;
+const idle=document.getElementById('idle'), photos=document.querySelectorAll('.photo');
+function showIdle(){
+  if(autoOn||btn.className){resetIdle();return;}   // 對話進行中不跳懷舊層
+  idle.classList.add('show');
+  photos.forEach((p,i)=>p.classList.toggle('on',i===0)); pi=0;
+  clearInterval(photoTimer);
+  photoTimer=setInterval(()=>{ // 每 8 秒溫柔交叉淡入下一張
+    photos[pi].classList.remove('on'); pi=(pi+1)%photos.length; photos[pi].classList.add('on');
+  },8000);
+}
+function hideIdle(){idle.classList.remove('show');clearInterval(photoTimer);}
+function resetIdle(){hideIdle();clearTimeout(idleTimer);idleTimer=setTimeout(showIdle,IDLE_MS);}
+['pointerdown','touchstart'].forEach(ev=>document.addEventListener(ev,resetIdle,{passive:true}));
+idle.addEventListener('pointerdown',hideIdle);
+resetIdle();
+
+/* ========== ③ 模式：按住說話 / 自動說話（連續對話）——真邏輯骨架，搬回時把 mock 換成真 VAD ========== */
+const btn=document.getElementById('btn'), statusEl=document.getElementById('status');
+const userBox=document.getElementById('user-box'), replyBox=document.getElementById('reply-box');
+const bars=document.querySelectorAll('.bar');
+
+let mode=localStorage.getItem('talkMode')||'hold';  // 預設家人可在 Setup 台設；此鍵之後由後端注入
+let autoOn=false;                                    // 自動模式的對話 session 是否進行中
+function btnLabel(s){
+  if(mode==='auto') return s==='listening'?'我在聽…':s==='processing'?'請稍候…':'開始說話';
+  return s==='listening'?'放開　送出':s==='processing'?'請稍候…':'按住說話';
+}
+function setUI(state,msg){ statusEl.textContent=msg; btn.className=state; btn.textContent=btnLabel(state); }
+
+/* 模式小切換（阿公畫面上；家人也能在 Setup 台設預設） */
+const msBtns=document.querySelectorAll('#modeSw .ms');
+function paintMode(){
+  msBtns.forEach(b=>b.classList.toggle('active',b.dataset.mode===mode));
+  if(!autoOn) setUI('', mode==='auto'?'點一下下面，就能開始聊天':'我在這裡陪你');
+}
+msBtns.forEach(b=>b.addEventListener('click',e=>{
+  e.stopPropagation();
+  if(autoOn) endAuto();
+  mode=b.dataset.mode; localStorage.setItem('talkMode',mode); paintMode();
+}));
+
+/* 波形工具（真版由麥克風音量驅動；這裡用亂數示範） */
+let waveIv=null;
+function waveOn(){ waveIv=setInterval(()=>bars.forEach(b=>{const h=8+Math.random()*34;b.style.height=h+'px';b.classList.toggle('on',h>18);}),90); }
+function waveOff(){ clearInterval(waveIv); waveIv=null; bars.forEach(b=>{b.style.height='8px';b.classList.remove('on');}); }
+
+/* 假問答（只為原型示範；正式版由後端回真話） */
+const QA=[['今天天氣好不好','阿公，今天天氣很好，外面出大太陽，很適合出去走走喔。'],
+          ['我中午吃飽了嗎','阿公放心，剛剛有吃飯了，肚子飽飽的，等一下記得喝點水喔。'],
+          ['阿珠去哪了','她等一下就回來了，阿公先坐著休息，我陪你聊天。']];
+let qi=0;
+function mockReply(){ const [u,r]=QA[qi++%QA.length];
+  userBox.textContent='你：'+u; userBox.style.display='block';
+  replyBox.textContent=r; replyBox.style.display='block'; }
+
+/* —— 按住說話（hold）：按著錄、放開送 —— */
+let holdT=[];
+function holdStart(){ resetIdle(); userBox.style.display='none'; replyBox.style.display='none'; setUI('listening','聽你說…'); waveOn(); }
+function holdStop(){
+  if(btn.className!=='listening') return;
+  waveOff(); setUI('processing','讓我想想…');
+  holdT.push(setTimeout(()=>{ mockReply(); setUI('','我說完了，還想聊就再按一次'); },1100));
+}
+
+/* —— 自動說話（連續對話）：點一下開始 → 說完自動送出 → 回覆後自動再聽 → 再點一下結束 —— */
+let autoT=[];
+function clearAutoT(){ autoT.forEach(clearTimeout); autoT=[]; }
+function startAuto(){ autoOn=true; resetIdle(); autoListen(); }
+function autoListen(){
+  if(!autoOn) return;
+  userBox.style.display='none'; replyBox.style.display='none';
+  setUI('listening','我在聽…（再點一下就結束）'); waveOn();
+  // 真版：VAD 偵測到你停頓約 1.4 秒就自動送出；沒說話約 8 秒就自動結束。此處用計時模擬。
+  autoT.push(setTimeout(()=>{
+    if(!autoOn) return; waveOff(); setUI('processing','讓我想想…');
+    autoT.push(setTimeout(()=>{
+      if(!autoOn) return; mockReply(); setUI('','換你說…（再點一下就結束）');
+      autoT.push(setTimeout(()=>autoListen(), 2800));   // 真版：回覆語音播完後自動再聽
+    },1200));
+  },2600));
+}
+function endAuto(){ autoOn=false; clearAutoT(); waveOff(); }
+
+/* —— 按鈕依模式分派：hold=按住錄音；auto=點一下開始／結束 —— */
+function onPress(){ if(mode==='auto'){ autoOn?endAuto():startAuto(); paintMode(); } else holdStart(); }
+function onRelease(){ if(mode!=='auto') holdStop(); }
+btn.addEventListener('touchstart',e=>{e.preventDefault();onPress();},{passive:false});
+btn.addEventListener('touchend',e=>{e.preventDefault();onRelease();},{passive:false});
+btn.addEventListener('mousedown',onPress);
+btn.addEventListener('mouseup',onRelease);
+btn.addEventListener('contextmenu',e=>e.preventDefault());
+
+paintMode();
+</script>
+</body>
+</html>
