@@ -1,3 +1,6 @@
+# 範本：複製成 conf.yaml 再改（conf.yaml 已被 .gitignore，你的本地設定不會上傳）。
+#   cp conf.example.yaml conf.yaml
+
 # 爺爺語音陪伴系統 — 設定檔（借 Open-LLM-VTuber 的 config 驅動可插拔模式）
 # 改這裡就能換模組，不用動程式。沒有這個檔 / 沒裝 pyyaml 時，程式用內建預設（行為不變）。
 # 密鑰不放這裡：API key 一律從環境變數讀（方便開源，不會把 key 提交進 repo）。
