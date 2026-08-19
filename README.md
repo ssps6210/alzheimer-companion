@@ -120,6 +120,17 @@ venv\Scripts\pip install -r requirements.txt
 > Every voice / photo / recording / conversation / key is gitignored — this repo
 > contains **no personal data**. See the pre-push privacy checklist before you push.
 
+## ☕ 支持這個項目 · Support
+
+免費、開源、為長者照護而做。如果它對你或你家人有一點幫助：
+
+- ⭐ **給這個 repo 一個 Star** —— 讓更多正在照顧失智長輩的家庭看到它，就是最好的支持。
+- ☕ **請我喝杯咖啡** —— 支持持續開發與維護。
+
+<p><a href="https://buymeacoffee.com/ssps6210noa"><img src="https://img.shields.io/badge/Buy_me_a_coffee-ffdd00?style=for-the-badge&logo=buymeacoffee&logoColor=black" alt="Buy me a coffee"></a></p>
+
+<sub><i>If it helps your family, a ⭐ Star helps other caregivers find it — and a ☕ keeps it maintained.</i></sub>
+
 ## ⚠️ 免責 · Disclaimer
 
 這是一個**陪伴**工具，**不是醫療器材**，不能取代醫療照護或緊急服務。請由家人監督使用。
