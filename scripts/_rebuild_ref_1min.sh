@@ -12,7 +12,7 @@ ffmpeg -nostdin -y -i "$SRC" \
 echo "新 father_reference 時長: $(ffprobe -v error -show_entries format=duration -of default=nk=1:nw=1 "$REF")s"
 
 echo "=== 2. edge-tts 來源（放慢 -15%） ==="
-"$EDGE" --voice zh-TW-YunJheNeural --rate=-15% --text "阿公，今天天氣真好，有沒有想出去走走？我等一下回去看你。" --write-media /tmp/src.mp3 2>&1 | tail -1
+"$EDGE" --voice zh-TW-YunJheNeural --rate=-15% --text "爺爺，今天天氣真好，有沒有想出去走走？我等一下回去看你。" --write-media /tmp/src.mp3 2>&1 | tail -1
 ffmpeg -nostdin -y -i /tmp/src.mp3 -ar 22050 -ac 1 /tmp/src.wav 2>/dev/null
 
 echo "=== 3. seed-vc(v1, 快) 換成爸爸聲 ==="

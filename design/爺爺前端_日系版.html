@@ -3,10 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
-<title>阿公的小幫手</title>
+<title>爺爺的小幫手</title>
 <style>
 /* ============================================================
-   阿公語音陪伴 · 日系優雅簡約溫暖版（原型）
+   爺爺語音陪伴 · 日系優雅簡約溫暖版（原型）
    設計語言：原研哉／無印 — 和紙留白(間)、墨色、柿色暖調、極度克制
    DOM 契約與正式版一致（#clock #date #wave/.bar #status
    #user-box #reply-box #btn.listening/.processing），方便原封搬回。
@@ -105,7 +105,7 @@ body.night::before{mix-blend-mode:screen;opacity:.35}
   transition:background .25s,color .25s;-webkit-tap-highlight-color:transparent}
 #modeSw .ms.active{background:var(--accent);color:var(--btn-fg);font-weight:600}
 
-/* —— 閒置：阿公的老照片慢速輪播（懷舊療法） —— */
+/* —— 閒置：爺爺的老照片慢速輪播（懷舊療法） —— */
 #idle{position:fixed;inset:0;z-index:5;opacity:0;pointer-events:none;
   transition:opacity 1.6s ease;background:var(--bg2)}
 #idle.show{opacity:1;pointer-events:auto}
@@ -120,7 +120,7 @@ body.night::before{mix-blend-mode:screen;opacity:.35}
   color:rgba(255,255,255,.82);font-size:4.2vw;letter-spacing:.2em;z-index:2;
   text-shadow:0 2px 12px rgba(0,0,0,.5)}
 
-/* —— 預覽用小工具（正式版會移除，不給阿公看到） —— */
+/* —— 預覽用小工具（正式版會移除，不給爺爺看到） —— */
 #preview{position:fixed;top:10px;right:12px;z-index:20;display:flex;gap:8px;
   font-family:sans-serif;opacity:.5}
 #preview button{font-size:14px;padding:6px 10px;border-radius:10px;border:1px solid var(--line);
@@ -133,7 +133,7 @@ body.night::before{mix-blend-mode:screen;opacity:.35}
   <div class="photo" style="background:linear-gradient(135deg,#caa87e,#9c7b52)"></div>
   <div class="photo" style="background:linear-gradient(135deg,#b98c6a,#7d5a44)"></div>
   <div class="photo" style="background:linear-gradient(135deg,#a89e86,#6f6a56)"></div>
-  <div class="hint">〈 這裡會慢慢播放阿公的老照片 · 碰一下就回來 〉</div>
+  <div class="hint">〈 這裡會慢慢播放爺爺的老照片 · 碰一下就回來 〉</div>
 </div>
 
 <div id="clock">--:--</div>
@@ -170,7 +170,7 @@ function tick(){
   document.getElementById('date').textContent=
     n.getFullYear()+'年'+(n.getMonth()+1)+'月'+n.getDate()+'日　'+DAYS[n.getDay()];
   document.getElementById('greet').textContent=
-    h<5?'夜深了':h<11?'早安　阿公':h<14?'午安　阿公':h<18?'午後好':'晚安　阿公';
+    h<5?'夜深了':h<11?'早安　爺爺':h<14?'午安　爺爺':h<18?'午後好':'晚安　爺爺';
   // 自動日夜：18:00–06:00 走暖夜（除非預覽手動切過）
   if(!window.__manualTheme){
     document.body.classList.toggle('night', h>=18||h<6);
@@ -212,7 +212,7 @@ function btnLabel(s){
 }
 function setUI(state,msg){ statusEl.textContent=msg; btn.className=state; btn.textContent=btnLabel(state); }
 
-/* 模式小切換（阿公畫面上；家人也能在 Setup 台設預設） */
+/* 模式小切換（爺爺畫面上；家人也能在 Setup 台設預設） */
 const msBtns=document.querySelectorAll('#modeSw .ms');
 function paintMode(){
   msBtns.forEach(b=>b.classList.toggle('active',b.dataset.mode===mode));
@@ -230,9 +230,9 @@ function waveOn(){ waveIv=setInterval(()=>bars.forEach(b=>{const h=8+Math.random
 function waveOff(){ clearInterval(waveIv); waveIv=null; bars.forEach(b=>{b.style.height='8px';b.classList.remove('on');}); }
 
 /* 假問答（只為原型示範；正式版由後端回真話） */
-const QA=[['今天天氣好不好','阿公，今天天氣很好，外面出大太陽，很適合出去走走喔。'],
-          ['我中午吃飽了嗎','阿公放心，剛剛有吃飯了，肚子飽飽的，等一下記得喝點水喔。'],
-          ['阿珠去哪了','她等一下就回來了，阿公先坐著休息，我陪你聊天。']];
+const QA=[['今天天氣好不好','爺爺，今天天氣很好，外面出大太陽，很適合出去走走喔。'],
+          ['我中午吃飽了嗎','爺爺放心，剛剛有吃飯了，肚子飽飽的，等一下記得喝點水喔。'],
+          ['阿珠去哪了','她等一下就回來了，爺爺先坐著休息，我陪你聊天。']];
 let qi=0;
 function mockReply(){ const [u,r]=QA[qi++%QA.length];
   userBox.textContent='你：'+u; userBox.style.display='block';

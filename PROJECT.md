@@ -1,24 +1,24 @@
-# 阿公語音陪伴系統 — 專案總文檔（Single Source of Truth）
+# 爺爺語音陪伴系統 — 專案總文檔（Single Source of Truth）
 
-> 給患有阿茲海默症的阿公用的語音 AI 陪伴系統。這份是「先讀這個」的總覽 + Runbook，
+> 給患有阿茲海默症的爺爺用的語音 AI 陪伴系統。這份是「先讀這個」的總覽 + Runbook，
 > 目的：**任何一次接手都不用重新推導**。改了架構請同步更新這裡。
 > 最後更新：2026-07-02
 
 ---
 
 ## 0. 一句話
-阿公按住平板按鈕說話 → 用**家人（爸爸）克隆的聲音**溫暖回他。極簡、無虛擬臉、離線優先、安全護欄、將**開源**。
+爺爺按住平板按鈕說話 → 用**家人（爸爸）克隆的聲音**溫暖回他。極簡、無虛擬臉、離線優先、安全護欄、將**開源**。
 
 ## 1. 設計哲學（不可違背的鐵則）
-- **絕對不要 avatar / 虛擬臉** —— 會嚇到 90 歲失智長者（尤其半夜）。閒置畫面用**阿公本人舊照片慢速輪播**（懷舊療法），不是合成臉。
+- **絕對不要 avatar / 虛擬臉** —— 會嚇到 90 歲失智長者（尤其半夜）。閒置畫面用**爺爺本人舊照片慢速輪播**（懷舊療法），不是合成臉。
 - **前端越乾淨越好**：一個大「按住說話」按鈕，如此而已。需夜間模式（暗、暖色）。
-- **人設只放「行為傾向」，不塞事實資料庫**。把家人細節硬塞進 prompt 會讓 AI 變笨、變複讀機；家人知識走內容通道（固定句/記憶），不進系統提示。看護病院不是私人空間 → persona 不主動講阿公私事。
+- **人設只放「行為傾向」，不塞事實資料庫**。把家人細節硬塞進 prompt 會讓 AI 變笨、變複讀機；家人知識走內容通道（固定句/記憶），不進系統提示。看護病院不是私人空間 → persona 不主動講爺爺私事。
 - **自稱一律「我」**（不自稱孫子或任何特定身分）。**台灣國語 / 台灣用語**（說「國語」不說「普通話」）。
 - 護城河 = **家人克隆聲 + 安全護欄（固定句 / 家人通報）**，不能換成黑盒。端側小模型只是反射層。
 
 ## 2. 系統架構
 ```
- 阿公的平板(台灣, Android/Chrome)
+ 爺爺的平板(台灣, Android/Chrome)
         │ HTTPS（按住說話，錄音上傳）
         ▼
  ┌─────────────────────────────────────────────┐
@@ -96,7 +96,7 @@ bash /mnt/d/elder-companion/scripts/_start_qwen.sh   # 用 /root/rvc_env 跑 qwe
 | 速度 | health ~0.6s；一般回覆 ~1s（比 MiMo 的 0.8–21s 快又穩）|
 
 **⭐關鍵坑（2026-07-10 實測修正，推翻先前判斷）：**
-- Nemotron 是推理模型，但 `reasoning_content` 分離**不穩定** —— 思考常直接吐進 `content`；`max_tokens=80` 又放不下 200–1000 字思考 → **被截斷的思考洩漏成 content**，阿公會聽到中/英文內心獨白、甚至自稱 granddaughter（實測 bug）。
+- Nemotron 是推理模型，但 `reasoning_content` 分離**不穩定** —— 思考常直接吐進 `content`；`max_tokens=80` 又放不下 200–1000 字思考 → **被截斷的思考洩漏成 content**，爺爺會聽到中/英文內心獨白、甚至自稱 granddaughter（實測 bug）。
 - **正解＝關思考**：`conf.yaml` 設 `disable_thinking: true` → 程式送 `chat_template_kwargs:{"enable_thinking":false}`。**Nemotron 也吃這個**（跟 MiMo 一樣，先前「NVIDIA 不吃」判斷是錯的）。實測 reasoning 歸零、`content` 全乾淨、又快。
 - ⚠️「detailed thinking off」系統提示**無效**（reasoning 仍 >0，別用）。
 - companion `_sanitize_reply()`：回覆再去 emoji / markdown，免被 TTS 念出（模型偶爾加 🌞）。
@@ -118,7 +118,7 @@ bash /mnt/d/elder-companion/scripts/_start_qwen.sh   # 用 /root/rvc_env 跑 qwe
 
 ## 7. 語音辨識 STT = faster-whisper（本地）
 - `medium` / CUDA / float16 / 中文。首次自動下載模型。
-- **台語 STT（待接，未解）**：阿公母語台語、常混台語+國語。
+- **台語 STT（待接，未解）**：爺爺母語台語、常混台語+國語。
   - NUTN-KWS/Whisper-Taiwanese-v0.5 → **會把國語轉爛**（幻覺/亂碼），不能用。
   - formoai/brecioso-e-model-taigi-20250901（台+國）→ **gated，等作者審核**；本機**沒設 HF token**。
   - 現況：先用 faster-whisper 撐（國語 OK、台語詞會漏）。
@@ -127,14 +127,14 @@ bash /mnt/d/elder-companion/scripts/_start_qwen.sh   # 用 /root/rvc_env 跑 qwe
 - **固定句快取**：`phrases/*.wav` = 爸爸真人錄音 17 條，命中（子字串比對 + 否定詞 不/沒/別/未/甭 防呆）就**繞過 LLM+TTS 秒回**。像導航語音包。
 - **記憶**：近期對話 + 滾動摘要存 `memory.json`（重啟不忘，已 gitignore）。超過 24 則把舊的濃縮進長期摘要。
 - **家人通報 Telegram**：`TELEGRAM_BOT_TOKEN`/`TELEGRAM_CHAT_ID`。出現不適/求助句（帶 `alert:true`）即推播；每天 20:00 寄當日對話摘要。
-- **/setup 家人管理台**：系統狀態、**阿公說話方式(預設 hold/auto)**、試聽現在的聲音、上傳家人聲音、固定句(播放+上傳)、阿公近況(對話記錄)。⚠️ **目前無密碼保護**（TODO）。
+- **/setup 家人管理台**：系統狀態、**爺爺說話方式(預設 hold/auto)**、試聽現在的聲音、上傳家人聲音、固定句(播放+上傳)、爺爺近況(對話記錄)。⚠️ **目前無密碼保護**（TODO）。
 
-## 8.5 阿公前端（2026-07 日系改造 + 說話模式）
-`companion_web.py` 內嵌 HTML（`/`）已改成**日系優雅簡約溫暖**（原研哉／無印：和紙暖白 day + 墨色暖夜 night，**18:00–06:00 自動切換**；柿色強調；明體）。DOM 契約不變（`#clock #date #wave/.bar #status #user-box #reply-box #btn`），另加 `#greet`（早午晚安）、`#modeSw`（模式切換）、`#idle`（懷舊層）。設計原型：`design/阿公前端_日系版.html`（可雙擊，右上有預覽鈕）。
+## 8.5 爺爺前端（2026-07 日系改造 + 說話模式）
+`companion_web.py` 內嵌 HTML（`/`）已改成**日系優雅簡約溫暖**（原研哉／無印：和紙暖白 day + 墨色暖夜 night，**18:00–06:00 自動切換**；柿色強調；明體）。DOM 契約不變（`#clock #date #wave/.bar #status #user-box #reply-box #btn`），另加 `#greet`（早午晚安）、`#modeSw`（模式切換）、`#idle`（懷舊層）。設計原型：`design/爺爺前端_日系版.html`（可雙擊，右上有預覽鈕）。
 - **兩種說話模式**（給腿腳/手不方便的長輩）：
   - `hold` 按住說話（原行為：按著錄、放開送）。
   - `auto` 自動連續對話：點一下開始 → **VAD 靜音偵測**（`SILENCE_MS=1400` 停頓自動送出、`NOSPEECH_MS=8000` 無語自動結束）→ 回覆播完**自動再聽** → 再點一下結束。VAD 重用 onaudioprocess 已算的 RMS（`VAD_ON=0.02`）。
-  - 預設由**家人在 /setup 設**（存 `ui_state.json` 的 `talk_mode`，開機注入 HTML 的 `__DEFAULT_MODE__`）；阿公畫面 `#modeSw` 可本機切換（存 localStorage，覆蓋預設）。端點 `GET/POST /setup/talk-mode`。
+  - 預設由**家人在 /setup 設**（存 `ui_state.json` 的 `talk_mode`，開機注入 HTML 的 `__DEFAULT_MODE__`）；爺爺畫面 `#modeSw` 可本機切換（存 localStorage，覆蓋預設）。端點 `GET/POST /setup/talk-mode`。
 - **懷舊老照片**：閒置 `IDLE_MS=75s` → 全螢幕老照片慢速輪播 + Ken Burns + 暈影，碰一下回來。照片放 `photos/`（jpg/png/webp），端點 `GET /photos`（列表）+ `/photos/{f}`；**沒放照片就顯示暖色占位**（目前狀態）。
 
 ## 9. 對外連線 ngrok（本次進度，**未收尾**）
@@ -143,7 +143,7 @@ bash /mnt/d/elder-companion/scripts/_start_qwen.sh   # 用 /root/rvc_env 跑 qwe
 - ✅ authtoken 已接：`ngrok config add-authtoken …` → 存於 `%LOCALAPPDATA%\ngrok\ngrok.yml`。
 - ✅ 帳號**免費固定域名 = `coexist-sherry-parish.ngrok-free.dev`**（重開不變，可當家人固定網址）。
 - ❌ **卡住**：該域名目前被**另一個 ngrok agent 佔用**（`ERR_NGROK_334 already online`；直接打回 404，不是本專案服務，也不在本機 Windows/排程 → 疑似在 WSL / 別台 / hermes 的通道）。要嘛找出來停掉、要嘛 `--pooling-enabled`（不建議，會分流）。
-- ⚠️ **免費版坑**：開網址會先跳英文警告頁「You are about to visit…」要按 Visit Site → **對失智阿公很糟**。正式給阿公要嘛 ngrok 付費($10/月，去警告頁)、要嘛改 **Tailscale Funnel / cloudflared 具名通道**（免費、無警告頁）。
+- ⚠️ **免費版坑**：開網址會先跳英文警告頁「You are about to visit…」要按 Visit Site → **對失智爺爺很糟**。正式給爺爺要嘛 ngrok 付費($10/月，去警告頁)、要嘛改 **Tailscale Funnel / cloudflared 具名通道**（免費、無警告頁）。
 - 開通道指令（域名釋放後）：
   ```powershell
   <ngrok.exe> http 8080 --url=coexist-sherry-parish.ngrok-free.dev --log=stdout
@@ -153,10 +153,10 @@ bash /mnt/d/elder-companion/scripts/_start_qwen.sh   # 用 /root/rvc_env 跑 qwe
 （測試期舊法：cloudflared 免註冊快速通道 `C:\Users\admin\cloudflared.exe tunnel --url http://localhost:8080`，**網址每次會變**。）
 
 ## 10. 「給家人一鍵用」的方案（設計結論，尚未實作）
-家人**不能自己跑伺服器**（要 GPU + 全套 WSL/模型）。正解：**伺服器留你 PC 24h 開**，家人只在阿公平板用固定網址。待做：
+家人**不能自己跑伺服器**（要 GPU + 全套 WSL/模型）。正解：**伺服器留你 PC 24h 開**，家人只在爺爺平板用固定網址。待做：
 1. 固定網址（§9）+ PC 24h + 看門狗（§11）。
 2. Companion 做成 **PWA**（manifest+圖示）→ 平板「加到主畫面」變 App 圖示，一點全螢幕進。
-3. 給家人：**QR code + 連結 + 一頁圖文指南**（怎麼設定、阿公怎麼用、沒反應怎麼辦、怎麼找你）。
+3. 給家人：**QR code + 連結 + 一頁圖文指南**（怎麼設定、爺爺怎麼用、沒反應怎麼辦、怎麼找你）。
 
 ## 11. 已知問題 / TODO
 - [ ] **看門狗**：`watchdog.ps1` 目前只顧 companion :8080，**沒顧 Qwen :50000** → 要合併（服務常因 VRAM 當機）。
@@ -189,11 +189,11 @@ bash /mnt/d/elder-companion/scripts/_start_qwen.sh   # 用 /root/rvc_env 跑 qwe
            conf.yaml .env .env.example .gitignore requirements.txt watchdog.ps1
            一鍵啟動.bat 一鍵停止.bat  ui_state.json(說話模式預設)
            father_reference.wav/.txt  memory.json  server.*.log  PROJECT.md(本檔)
-photos/     阿公老照片（懷舊輪播，放 jpg/png 就播；空=暖色占位）
-design/     阿公前端_日系版.html（設計原型）
+photos/     爺爺老照片（懷舊輪播，放 jpg/png 就播；空=暖色占位）
+design/     爺爺前端_日系版.html（設計原型）
 phrases/    固定句 17 條爸爸真聲 wav
 voices/     克隆素材
-recordings/ 原始錄音：Father_Voice/  Mom_Voice/(媽媽18句)  阿公我在_父親版.aac
+recordings/ 原始錄音：Father_Voice/  Mom_Voice/(媽媽18句)  爺爺我在_父親版.aac
 scripts/    現役腳本：_start_qwen.sh / _stop_qwen.sh（launch/stop.ps1 呼叫）、
            launch.ps1 / stop.ps1 / setup_env.ps1、父親參考音 _build/_rebuild/_denoise、_flash_setup.sh、_test_qwen*
            ⚠️ 部分父親參考音 .sh 內部路徑仍指舊 D:\Downloads\Father_Voice，重跑要改成 recordings/
@@ -210,7 +210,7 @@ legacy/     舊實驗檔 + 2026-07 清理移入：cosyvoice_api.py / stt_api.py 
 | Qwen 參考音/模型 | `QWEN_REF` / `QWEN_MODEL` / `QWEN_PORT` | 預設在 `qwen_tts_api.py`，可環境覆蓋 |
 - Windows venv：`D:\elder-companion\venv`；WSL venv：`/root/rvc_env`（Ubuntu-22.04，**唯一現役 WSL 環境**）。
 - **磁碟清理（2026-07-10）**：WSL 內刪了 `cosyvoice_env`/`seed-vc`/`CosyVoice`/`RVC` 廢棄環境 + pip 快取；HF 快取只留 Qwen 1.7B（`~/.cache/huggingface` 14G→4.3G，刪了 NUTN台語/hubert/Qwen0.6B/bigvgan/whisper-small）。ext4 用量降到 ~14G。⚠️ **但 C 碟的 `ext4.vhdx`（~37G）原地壓縮無效** —— WSL2 sparse vhdx 已知坑，diskpart / Optimize-VHD / 填零全 ≈0（填零還危險：ext4 掛 1TB 虛擬盤會失控）。要真正還 C 碟空間，須 `wsl --export`→`--unregister`→`--import` **搬到 D 碟**（順帶重建成 ~14G 的乾淨 vhdx）。
-- **Docker Desktop**：本機有裝（`docker-desktop` WSL 發行版 + `docker_data.vhdx`，約佔 C 碟 8G），**阿公專案完全沒用到**；有自動啟動的 `com.docker.service` watchdog，要清得先停服務+關自動啟動才不會補回。
+- **Docker Desktop**：本機有裝（`docker-desktop` WSL 發行版 + `docker_data.vhdx`，約佔 C 碟 8G），**爺爺專案完全沒用到**；有自動啟動的 `com.docker.service` watchdog，要清得先停服務+關自動啟動才不會補回。
 - **CPU 防當**：本機 min processor state 釘 100% 避 AMD Kernel-Power 41（正解在 BIOS Global C-state Control）。
 
 ## 14. 三步驟快速排錯

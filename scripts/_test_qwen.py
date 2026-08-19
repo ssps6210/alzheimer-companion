@@ -1,6 +1,6 @@
 import torch, gc, soundfile as sf
 REF = "/mnt/d/elder-companion/father_reference.wav"
-TXT = "阿公，今天天氣真好，有沒有想出去走走？我等一下回去看你。"
+TXT = "爺爺，今天天氣真好，有沒有想出去走走？我等一下回去看你。"
 
 # 1. 轉逐字稿當 ref_text
 from transformers import pipeline

@@ -1,12 +1,12 @@
 ﻿$ErrorActionPreference = 'SilentlyContinue'
 try { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8 } catch {}
-try { $Host.UI.RawUI.WindowTitle = '阿公陪伴系統 · 啟動' } catch {}
+try { $Host.UI.RawUI.WindowTitle = '爺爺陪伴系統 · 啟動' } catch {}
 $root = 'D:\elder-companion'
 $py   = Join-Path $root 'venv\Scripts\python.exe'
 
 Write-Host ''
 Write-Host '=====================================' -ForegroundColor Cyan
-Write-Host '   阿公陪伴系統 · 一鍵啟動' -ForegroundColor Cyan
+Write-Host '   爺爺陪伴系統 · 一鍵啟動' -ForegroundColor Cyan
 Write-Host '=====================================' -ForegroundColor Cyan
 Write-Host ''
 
@@ -52,7 +52,7 @@ if ($h -and $h.whisper.loaded) {
     Start-Process 'http://localhost:8080/'
     Start-Process 'http://localhost:8080/setup'
     Write-Host '  已為你開啟兩個分頁：' -ForegroundColor Cyan
-    Write-Host '    前端（阿公用）        http://localhost:8080/' -ForegroundColor White
+    Write-Host '    前端（爺爺用）        http://localhost:8080/' -ForegroundColor White
     Write-Host '    家人管理台 setup      http://localhost:8080/setup' -ForegroundColor White
 } else {
     Write-Host '  逾時：companion 沒起來。請看 server.err.log' -ForegroundColor Red

@@ -1,10 +1,10 @@
 ﻿$ErrorActionPreference = 'SilentlyContinue'
 try { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8 } catch {}
-try { $Host.UI.RawUI.WindowTitle = '阿公陪伴系統 · 停止' } catch {}
+try { $Host.UI.RawUI.WindowTitle = '爺爺陪伴系統 · 停止' } catch {}
 
 Write-Host ''
 Write-Host '=====================================' -ForegroundColor Cyan
-Write-Host '   阿公陪伴系統 · 停止' -ForegroundColor Cyan
+Write-Host '   爺爺陪伴系統 · 停止' -ForegroundColor Cyan
 Write-Host '=====================================' -ForegroundColor Cyan
 Write-Host ''
 

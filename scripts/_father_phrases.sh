@@ -2,7 +2,7 @@
 SRC="/mnt/d/Downloads/Father_Voice"
 DST="/mnt/d/elder-companion/phrases"
 mkdir -p "$DST"
-# 溫和降噪（這些是直接播給阿公聽，寧可少清一點、保留自然人聲）
+# 溫和降噪（這些是直接播給爺爺聽，寧可少清一點、保留自然人聲）
 AF="highpass=f=80,afftdn=nf=-25,lowpass=f=9000"
 map="
 Bored.wav.m4a|bored.wav

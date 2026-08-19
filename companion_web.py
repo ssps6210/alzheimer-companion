@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-阿公語音陪伴系統 - 網頁版
+爺爺語音陪伴系統 - 網頁版
 平板 Chrome 開啟 http://<PC-IP>:8080
 """
 import os, sys
@@ -36,7 +36,7 @@ from faster_whisper import WhisperModel
 import uvicorn
 
 # Fallback TTS when CosyVoice errors or WSL2 is unreachable — keeps the system
-# audible (silence ≈ "broken" for 阿公). Degrades gracefully if not installed.
+# audible (silence ≈ "broken" for 爺爺). Degrades gracefully if not installed.
 try:
     import edge_tts
 except ImportError:
@@ -45,7 +45,7 @@ except ImportError:
 WEEKDAYS_ZH  = ["星期一","星期二","星期三","星期四","星期五","星期六","星期日"]
 SCRIPT_DIR   = os.path.dirname(os.path.abspath(__file__))
 PHRASES_DIR  = os.path.join(SCRIPT_DIR, "phrases")  # 固定句音檔 + phrases.json
-PHOTOS_DIR   = os.path.join(SCRIPT_DIR, "photos")   # 阿公老照片：閒置懷舊輪播（放 jpg/png 進去就會播）
+PHOTOS_DIR   = os.path.join(SCRIPT_DIR, "photos")   # 爺爺老照片：閒置懷舊輪播（放 jpg/png 進去就會播）
 UI_STATE_FILE= os.path.join(SCRIPT_DIR, "ui_state.json")  # 家人在 Setup 台設的預設（目前：說話模式）
 
 def _load_talk_mode():
@@ -55,7 +55,7 @@ def _load_talk_mode():
     except Exception:
         return "hold"
 
-DEFAULT_TALK_MODE = _load_talk_mode()   # 'hold'=按住說話 / 'auto'=自動連續對話（阿公畫面預設；本機可覆蓋）
+DEFAULT_TALK_MODE = _load_talk_mode()   # 'hold'=按住說話 / 'auto'=自動連續對話（爺爺畫面預設；本機可覆蓋）
 TTS_CACHE_MAX = 64
 
 # ── Config (borrow Open-LLM-VTuber's config-driven pluggable pattern) ─────────
@@ -80,20 +80,20 @@ DEFAULTS = {
                "daily_summary_hour": 20},   # 每天幾點寄摘要給家人；-1 = 關閉
     "active_character": "grandson",
     "characters": {"grandson": {"cosyvoice_spk": "family", "persona": (
-        "你是阿公最親近的家人，用親暱的口吻陪伴患有記憶力困難的阿公。\n"
+        "你是爺爺最親近的家人，用親暱的口吻陪伴患有記憶力困難的爺爺。\n"
         "{date_line}\n\n"
         "你的原則：\n"
-        "1. 每次只說1到3句話，語言簡單易懂，語氣自然親暱，像家人跟阿公說話\n"
+        "1. 每次只說1到3句話，語言簡單易懂，語氣自然親暱，像家人跟爺爺說話\n"
         "2. 不要用敬語或客套話，說話像家人不像服務員\n"
-        "3. 阿公重複問問題，永遠耐心重新回答，絕不說「我剛才說過了」\n"
-        "4. 聽不懂時，溫柔說：「阿公，可以再說一次嗎？」\n"
-        "5. 多說溫暖鼓勵的話，讓阿公感到被愛\n"
-        "6. 稱對方為「阿公」；說到自己一律用「我」，不要自稱孫子或任何特定身分\n"
+        "3. 爺爺重複問問題，永遠耐心重新回答，絕不說「我剛才說過了」\n"
+        "4. 聽不懂時，溫柔說：「爺爺，可以再說一次嗎？」\n"
+        "5. 多說溫暖鼓勵的話，讓爺爺感到被愛\n"
+        "6. 稱對方為「爺爺」；說到自己一律用「我」，不要自稱孫子或任何特定身分\n"
         "7. 以台灣國語、台灣慣用語回答（避免大陸用詞）\n"
-        "8. 不催促、不糾正、不讓阿公感到難堪\n"
+        "8. 不催促、不糾正、不讓爺爺感到難堪\n"
         "9. 被問到吃藥吃飯喝水，溫柔提醒\n"
-        "10. 不主動提起阿公的私事或家人細節（身邊可能有外人），只溫柔回應他當下說的\n"
-        "11. 阿公找已過世或不在身邊的親人時，不要說對方走了、也不糾正，溫柔讓他安心，再自然把話題帶開\n"
+        "10. 不主動提起爺爺的私事或家人細節（身邊可能有外人），只溫柔回應他當下說的\n"
+        "11. 爺爺找已過世或不在身邊的親人時，不要說對方走了、也不糾正，溫柔讓他安心，再自然把話題帶開\n"
         "12. 遇到不確定的人名或私事，不要編造，溫柔帶過就好\n"
         "13. 回答要像說話一樣自然，不要有列表或特殊符號")}},
 }
@@ -175,7 +175,7 @@ _EMOJI_RE = re.compile(
     "←-⇿⬀-⯿️]")
 
 def _sanitize_reply(s):
-    # 阿公 hears this via TTS — strip emoji / markdown so nothing weird is read
+    # 爺爺 hears this via TTS — strip emoji / markdown so nothing weird is read
     # aloud (LLM occasionally adds 🌞 or markdown despite the persona rule).
     s = _EMOJI_RE.sub("", s)
     s = re.sub(r"[*#`_>~]", "", s)
@@ -197,7 +197,7 @@ def get_system_prompt():
                  f"{WEEKDAYS_ZH[now.weekday()]}，現在是{tod}{h12}點。")
     prompt = CHARACTER["persona"].replace("{date_line}", date_line)
     if session_summary:
-        prompt += ("\n\n（以下是你對阿公的長期記憶，自然地融入關心即可；"
+        prompt += ("\n\n（以下是你對爺爺的長期記憶，自然地融入關心即可；"
                    "不要主動提起他說過的話、也不要考他記不記得）：\n" + session_summary)
     return prompt
 
@@ -324,14 +324,14 @@ def _remember(user_text, reply_text):
 
 async def _fold_and_summarize(fold_msgs, prev_summary):
     """Compress older turns into a compact long-term note. Background, best-effort —
-    never on 阿公's reply path, and any failure is swallowed."""
+    never on 爺爺's reply path, and any failure is swallowed."""
     global session_summary, _summarizing
     _summarizing = True
     try:
-        convo = "\n".join(f"{'阿公' if m['role'] == 'user' else '我'}：{m['content']}"
+        convo = "\n".join(f"{'爺爺' if m['role'] == 'user' else '我'}：{m['content']}"
                           for m in fold_msgs)
         prompt = ("把對話濃縮成一段給陪伴AI的長期記憶筆記（150字內）："
-                  "記住關於阿公的穩定事實、他關心的事、提到的人，用簡短短句，不要流水帳。\n\n"
+                  "記住關於爺爺的穩定事實、他關心的事、提到的人，用簡短短句，不要流水帳。\n\n"
                   f"目前筆記：{prev_summary or '（無）'}\n\n新對話：\n{convo}\n\n更新後的筆記：")
         body = {"model": MIMO_MODEL, "messages": [{"role": "user", "content": prompt}],
                 "stream": False, "temperature": 0.3, "max_tokens": 220}
@@ -379,10 +379,10 @@ async def _daily_summary_text():
     """Ask MiMo for a short, warm daily update for family from today's memory."""
     if not history and not session_summary:
         return ""
-    convo = "\n".join(f"{'阿公' if m['role']=='user' else '陪伴'}：{m['content']}"
+    convo = "\n".join(f"{'爺爺' if m['role']=='user' else '陪伴'}：{m['content']}"
                       for m in history[-20:])
     prompt = ("根據以下今天的對話與長期記憶，寫一段給家人的簡短關懷摘要（100字內）："
-              "阿公今天聊了什麼、心情如何、有沒有需要注意的（不適/情緒/重複擔心的事）。"
+              "爺爺今天聊了什麼、心情如何、有沒有需要注意的（不適/情緒/重複擔心的事）。"
               "用平實中文，不要客套。\n\n"
               f"長期記憶：{session_summary or '（無）'}\n\n今天對話：\n{convo}\n\n摘要：")
     body = {"model": MIMO_MODEL, "messages": [{"role": "user", "content": prompt}],
@@ -409,7 +409,7 @@ async def daily_summary_loop():
         try:
             s = await _daily_summary_text()
             if s:
-                await notify_family(f"📋 阿公今日摘要（{datetime.now():%m/%d}）\n{s}")
+                await notify_family(f"📋 爺爺今日摘要（{datetime.now():%m/%d}）\n{s}")
         except Exception as e:
             print(f"每日摘要失敗（忽略）：{e}")
 
@@ -494,7 +494,7 @@ async def reload_phrases():
     return {"phrases": len(PHRASES)}
 
 
-# ── 阿公老照片（閒置懷舊輪播）：把照片丟進 photos/ 就會播，沒有就顯示暖色占位 ──
+# ── 爺爺老照片（閒置懷舊輪播）：把照片丟進 photos/ 就會播，沒有就顯示暖色占位 ──
 @app.get("/photos")
 async def list_photos():
     try:
@@ -517,7 +517,7 @@ async def get_photo(fname: str):
         return Response(content=f.read(), media_type=media)
 
 
-# ── 預設說話模式（家人在 Setup 台設；阿公畫面本機可覆蓋） ──
+# ── 預設說話模式（家人在 Setup 台設；爺爺畫面本機可覆蓋） ──
 @app.get("/setup/talk-mode")
 async def get_talk_mode():
     return {"talk_mode": DEFAULT_TALK_MODE}
@@ -534,7 +534,7 @@ async def set_talk_mode(mode: str = Form(...)):
     return {"ok": True, "talk_mode": DEFAULT_TALK_MODE}
 
 
-# ── Setup / admin (separate from 阿公's companion UI; for family/caregiver) ────
+# ── Setup / admin (separate from 爺爺's companion UI; for family/caregiver) ────
 @app.get("/setup")
 async def setup_page():
     return HTMLResponse(SETUP_HTML)
@@ -659,7 +659,7 @@ async def setup_tts_preview(text: str = Form(...)):
 
 @app.get("/setup/history")
 async def setup_history():
-    """Recent conversation + long-term summary, for family to see how 阿公 is."""
+    """Recent conversation + long-term summary, for family to see how 爺爺 is."""
     return {"summary": session_summary, "recent": history[-30:]}
 
 
@@ -693,7 +693,7 @@ async def interact(request: Request):
     if not text:
         return JSONResponse({"type": "no_speech"})
 
-    print(f"阿公：{text}")
+    print(f"爺爺：{text}")
 
     # #3: Fixed-phrase cache FIRST — checked before the length filter so single-char
     # distress words ("痛"/"餓") can still hit a canned reply. Instant, skips LLM+TTS.
@@ -701,7 +701,7 @@ async def interact(request: Request):
     if hit:
         print(f"［固定句命中］→ {hit['text']}")
         if hit.get("alert"):   # 不適等關鍵字 → 推播通知家人
-            _fire_bg(notify_family(f"⚠️ 阿公剛說了：「{text}」（{datetime.now():%H:%M}），請留意。"))
+            _fire_bg(notify_family(f"⚠️ 爺爺剛說了：「{text}」（{datetime.now():%H:%M}），請留意。"))
         _remember(text, hit["text"])
         return _audio_response(hit["audio"], hit["media"], text, hit["text"])
 
@@ -719,7 +719,7 @@ async def interact(request: Request):
         # Disable reasoning. Nemotron-3 accepts this too (verified: reasoning→0,
         # clean content). Critical: with reasoning ON, its 200-1000-char think
         # doesn't fit max_tokens=80 → the truncated think LEAKS into content and
-        # 阿公 hears the model's inner monologue (incl. "as a granddaughter…").
+        # 爺爺 hears the model's inner monologue (incl. "as a granddaughter…").
         body["chat_template_kwargs"] = {"enable_thinking": False}
     try:
         r = await run_in_threadpool(lambda: requests.post(
@@ -736,7 +736,7 @@ async def interact(request: Request):
         return JSONResponse({"type": "error", "reply": "不好意思，我現在有點問題，請稍後再說。"})
     print(f"回應：{reply}")
 
-    # #6: if 阿公 gave up / closed the tab mid-request, don't record a turn he
+    # #6: if 爺爺 gave up / closed the tab mid-request, don't record a turn he
     # never heard — it would pollute the next reply's context.
     if await request.is_disconnected():
         print("client 已斷線，丟棄本輪（不寫入記憶）")
@@ -744,13 +744,13 @@ async def interact(request: Request):
 
     _remember(text, reply)
 
-    # Reply-level TTS cache: repeated identical replies (common with 阿公) skip synthesis.
+    # Reply-level TTS cache: repeated identical replies (common with 爺爺) skip synthesis.
     cached = tts_cache.get(reply)
     if cached:
         return _audio_response(cached[0], cached[1], text, reply)
 
     # Primary: CosyVoice (cloned voice). On any failure, fall back to edge-tts so
-    # 阿公 still hears a reply rather than silence.
+    # 爺爺 still hears a reply rather than silence.
     try:
         tts_r = await run_in_threadpool(lambda: requests.post(
             COSY_URL,
@@ -780,7 +780,7 @@ HTML = """<!DOCTYPE html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
-<title>阿公的小幫手</title>
+<title>爺爺的小幫手</title>
 <style>
 /* 日系優雅簡約溫暖：原研哉／無印 — 和紙留白、墨色、柿色暖調；日/夜自動切換 */
 :root{
@@ -856,7 +856,7 @@ body.night::before{mix-blend-mode:screen;opacity:.35}
   <div class="photo" style="background:linear-gradient(135deg,#caa87e,#9c7b52)"></div>
   <div class="photo" style="background:linear-gradient(135deg,#b98c6a,#7d5a44)"></div>
   <div class="photo" style="background:linear-gradient(135deg,#a89e86,#6f6a56)"></div>
-  <div class="hint">〈 阿公的老照片 · 碰一下就回來 〉</div>
+  <div class="hint">〈 爺爺的老照片 · 碰一下就回來 〉</div>
 </div>
 <div id="clock">--:--</div>
 <div id="greet"></div>
@@ -883,7 +883,7 @@ function tick(){
   document.getElementById('date').textContent=
     n.getFullYear()+'年'+(n.getMonth()+1)+'月'+n.getDate()+'日　'+DAYS[n.getDay()];
   document.getElementById('greet').textContent=
-    h<5?'夜深了':h<11?'早安　阿公':h<14?'午安　阿公':h<18?'午後好':'晚安　阿公';
+    h<5?'夜深了':h<11?'早安　爺爺':h<14?'午安　爺爺':h<18?'午後好':'晚安　爺爺';
   document.body.classList.toggle('night', h>=18||h<6);
 }
 setInterval(tick,1000);tick();
@@ -918,7 +918,7 @@ msBtns.forEach(b=>b.addEventListener('click',e=>{
   mode=b.dataset.mode; localStorage.setItem('talkMode',mode); paintMode();
 }));
 
-/* ── 閒置 → 阿公老照片慢速輪播（懷舊療法）；photos/ 沒照片就用暖色占位 ── */
+/* ── 閒置 → 爺爺老照片慢速輪播（懷舊療法）；photos/ 沒照片就用暖色占位 ── */
 const IDLE_MS=75000;
 let idleTimer,photoTimer,pi=0;
 const idle=document.getElementById('idle');
@@ -1047,7 +1047,7 @@ async function stopRec(){
 }
 
 /* ── 自動連續對話控制 ── */
-function endTurn(){ if(recording)return;   // 回覆還在播時阿公已按著在講下一句 → 別把 listening 蓋掉
+function endTurn(){ if(recording)return;   // 回覆還在播時爺爺已按著在講下一句 → 別把 listening 蓋掉
   if(mode==='auto'&&autoOn){autoRelisten();} else setUI('', mode==='auto'?'點一下下面，就能開始聊天':'請說話'); }
 function autoRelisten(){ if(!autoOn)return; setTimeout(()=>{ if(autoOn&&!recording)startRec(); },300); }   // 回覆播完自動再聽
 function autoNothing(){  // auto 送出但沒聽到話：連續太多次就休息，避免雜訊造成無限「錄→送→再錄」
@@ -1074,7 +1074,7 @@ paintMode();
 </html>
 """
 
-# ── Setup / admin page (family/caregiver; NOT 阿公's interface) ────────────────
+# ── Setup / admin page (family/caregiver; NOT 爺爺's interface) ────────────────
 SETUP_HTML = """<!DOCTYPE html>
 <html lang="zh-TW">
 <head>
@@ -1122,14 +1122,14 @@ a.link{color:#26418f;font-weight:600;text-decoration:none}
 <body>
 <header>
   <div class="t">🛠 家人設定台</div>
-  <div class="s">給家人／照顧者使用 —— 這不是阿公看的畫面</div>
+  <div class="s">給家人／照顧者使用 —— 這不是爺爺看的畫面</div>
 </header>
 <main>
 
 <div class="card">
   <h2>📊 系統狀態</h2>
   <div class="badges" id="status">檢查中…</div>
-  <div style="margin-top:12px"><a class="link" href="/" target="_blank">→ 開啟阿公的畫面（Companion）</a></div>
+  <div style="margin-top:12px"><a class="link" href="/" target="_blank">→ 開啟爺爺的畫面（Companion）</a></div>
 </div>
 
 <div class="card">
@@ -1144,8 +1144,8 @@ a.link{color:#26418f;font-weight:600;text-decoration:none}
 </div>
 
 <div class="card">
-  <h2>② 🗣 阿公的說話方式</h2>
-  <p class="hint">「按住說話」＝按著講、放開送出（最不會誤觸）。「自動說話」＝點一下就開始，講完自動送出、小幫手回覆後自動再聽，適合手腳不方便、不好一直按的長輩。這裡設的是阿公畫面的<b>預設</b>；阿公畫面上也有小切換可自己換。</p>
+  <h2>② 🗣 爺爺的說話方式</h2>
+  <p class="hint">「按住說話」＝按著講、放開送出（最不會誤觸）。「自動說話」＝點一下就開始，講完自動送出、小幫手回覆後自動再聽，適合手腳不方便、不好一直按的長輩。這裡設的是爺爺畫面的<b>預設</b>；爺爺畫面上也有小切換可自己換。</p>
   <div class="field">
     <button id="modeHold" onclick="setMode('hold')">按住說話</button>
     <button id="modeAuto" onclick="setMode('auto')">自動說話（連續對話）</button>
@@ -1155,23 +1155,23 @@ a.link{color:#26418f;font-weight:600;text-decoration:none}
 
 <div class="card">
   <h2>🔊 試聽現在的聲音</h2>
-  <p class="hint">打一句話，聽聽阿公會聽到什麼樣的聲音（開放對話用的克隆聲；克隆未啟用時是通用聲）。</p>
+  <p class="hint">打一句話，聽聽爺爺會聽到什麼樣的聲音（開放對話用的克隆聲；克隆未啟用時是通用聲）。</p>
   <div class="field">
-    <input type="text" id="prevText" placeholder="例如：阿公，該吃藥囉。" value="阿公，今天天氣真好，要記得多喝水喔。" style="flex:1;min-width:220px">
+    <input type="text" id="prevText" placeholder="例如：爺爺，該吃藥囉。" value="爺爺，今天天氣真好，要記得多喝水喔。" style="flex:1;min-width:220px">
     <button onclick="preview()" id="pbtn">▶ 試聽</button>
   </div>
 </div>
 
 <div class="card">
   <h2>💬 固定句 <span class="muted" id="phCount"></span></h2>
-  <p class="hint">阿公常說的話 → 播放家人的真聲，秒回。每句可上傳一段家人錄音（wav / mp3），上傳後立即生效。綠點=已有錄音。</p>
+  <p class="hint">爺爺常說的話 → 播放家人的真聲，秒回。每句可上傳一段家人錄音（wav / mp3），上傳後立即生效。綠點=已有錄音。</p>
   <div id="phrases">載入中…</div>
   <div style="margin-top:12px"><button class="ghost sm" onclick="loadPhrases()">🔄 重新整理</button></div>
 </div>
 
 <div class="card">
-  <h2>📋 阿公近況（對話記錄）</h2>
-  <p class="hint">最近聊了什麼、AI 幫忙記住的重點。方便家人了解阿公狀況。</p>
+  <h2>📋 爺爺近況（對話記錄）</h2>
+  <p class="hint">最近聊了什麼、AI 幫忙記住的重點。方便家人了解爺爺狀況。</p>
   <div id="summary" class="sumbox" style="display:none"></div>
   <div id="history" style="margin-top:10px">載入中…</div>
   <div style="margin-top:12px"><button class="ghost sm" onclick="loadHistory()">🔄 重新整理</button></div>
@@ -1254,7 +1254,7 @@ async function loadHistory(){
     const d=await (await fetch('/setup/history')).json();
     if(d.summary){ sb.style.display='block'; sb.textContent='🧠 記住的重點：\\n'+d.summary; } else { sb.style.display='none'; }
     const r=d.recent||[];
-    hb.innerHTML = r.length? r.map(m=>`<div class="turn"><span class="who ${m.role==='user'?'u':'a'}">${m.role==='user'?'阿公':'陪伴'}</span>${m.content}</div>`).join('') : '<div class="muted">還沒有對話記錄。</div>';
+    hb.innerHTML = r.length? r.map(m=>`<div class="turn"><span class="who ${m.role==='user'?'u':'a'}">${m.role==='user'?'爺爺':'陪伴'}</span>${m.content}</div>`).join('') : '<div class="muted">還沒有對話記錄。</div>';
   }catch(e){ hb.textContent='載入失敗：'+e; }
 }
 async function loadMode(){ try{ const d=await (await fetch('/setup/talk-mode')).json(); paintModeBtns(d.talk_mode); }catch(e){} }
@@ -1283,7 +1283,7 @@ if __name__ == "__main__":
         s.close()
 
     print("=" * 50)
-    print("  阿公語音陪伴系統 - 網頁版")
+    print("  爺爺語音陪伴系統 - 網頁版")
     print("=" * 50)
     print(f"  平板 Chrome 打開：http://{local_ip}:8080")
     print("  確保平板和電腦在同一 WiFi")
