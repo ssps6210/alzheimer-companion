@@ -5,6 +5,16 @@
   <b>Companionship for elders with dementia — in the voice of someone they love.</b>
 </p>
 
+> **這個專案的起點很私人。**
+> 我阿公（「阿公」是閩南／台灣話的「爺爺」）住院兩年了，有時候還會卡痰，很辛苦；我住得很遠，每次回去看他都忍不住哭。
+> 我沒辦法時時刻刻陪著他——**但我可以把「家人的聲音」留在他身邊。** 所以有了這個。
+> 願它在你不在的時候，替你陪著那個正在慢慢忘記的人。
+>
+> **This began as something personal.**
+> My grandfather — *A-gong*, the Taiwanese (Minnan) word for grandpa — has been in hospital for two years; some days he struggles with phlegm, and it is hard to watch. I live far away, and every time I visit, I cry.
+> I can't be with him every moment — **but I can leave the voice of family by his side.** So this exists.
+> May it sit with the person you love, in the moments you cannot be there.
+
 <p align="center">
   <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-green.svg"></a>
   <img alt="for dementia care" src="https://img.shields.io/badge/for-dementia%20care-ff8c69">
