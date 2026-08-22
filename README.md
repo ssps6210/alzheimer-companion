@@ -9,7 +9,6 @@
   <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-green.svg"></a>
   <img alt="for dementia care" src="https://img.shields.io/badge/for-dementia%20care-ff8c69">
   <img alt="privacy: local-first" src="https://img.shields.io/badge/privacy-local--first-2b7bba">
-  <img alt="no avatar" src="https://img.shields.io/badge/no-avatar-lightgrey">
 </p>
 
 ---
@@ -46,7 +45,7 @@
 
 | | |
 |---|---|
-| 🚫 **不要虛擬人臉** | 會動的合成臉會**驚嚇失智長者**（尤其半夜意識混亂）。閒置畫面改放**長輩自己的舊照片**慢速輪播——有實證的「懷舊療法」。<br>_No avatar. A talking synthetic face frightens people with dementia; idle screen shows the elder's own old photos (reminiscence therapy) instead._ |
+| 📷 **待機放長輩的老照片** | 沒事時螢幕慢慢輪播**長輩自己的舊照片**——熟悉、溫柔，有實證的「懷舊療法」，讓他安心。<br>_When idle, the screen slowly cycles the elder's own old photos — familiar and calming (reminiscence therapy)._ |
 | 🎙️ **家人的聲音是核心** | 一顆大按鈕 + 家人克隆聲 + 安全護欄，才是價值。<br>_The family's voice is the point — one big button, a cloned familiar voice, safety guardrails._ |
 | 🔒 **隱私優先** | 長輩的對話**留在你自己的機器**，不上任何雲端資料庫。<br>_Local-first. Conversations stay on your machine; nothing is uploaded to a cloud database._ |
 | 🧓 **為長者而生的介面** | 一顆手抖也好按的大按鈕；日系暖色、日夜自動切換；可選「按住說話」或「自動連續對話」。<br>_Built for elders: one huge button, warm palette, auto day/night, hold-to-talk or hands-free continuous mode._ |
