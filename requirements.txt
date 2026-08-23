@@ -1,6 +1,12 @@
-faster-whisper
-sounddevice
-edge-tts
+# Windows 端 companion（companion_web.py, :8080）— 大腦串接 + STT + 前端 + /setup
+# 安裝：python -m venv venv && venv\Scripts\pip install -r requirements.txt
+# （語音克隆 Qwen 跑在 WSL2，依賴另見 scripts/_install_wsl.sh）
+fastapi
+uvicorn
+python-multipart      # FastAPI 的 Form/File 上傳（/setup 上傳音色、固定句）
+faster-whisper        # 本地語音辨識（STT）
+av                    # 解碼上傳音檔（wav/mp3/m4a），faster-whisper 也用
+edge-tts              # 備援 TTS（克隆聲失敗時的通用聲）
 requests
 numpy
-pygame
+pyyaml                # 讀 conf.yaml（沒有的話用內建預設）

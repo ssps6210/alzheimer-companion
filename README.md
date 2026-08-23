@@ -99,18 +99,22 @@
 - **LLM** — 任何 OpenAI 相容端點（`conf.yaml` 可換 base_url / model）
 - **TTS** — `Qwen/Qwen3-TTS-12Hz-1.7B-Base` 零樣本克隆（Apache-2.0）
 
-## 🚀 快速開始 · Quick start
+## 🚀 安裝 · Install
 
-```bash
-cp .env.example .env          # 填 NVIDIA_API_KEY（或改 conf.yaml 換別家 LLM）
+> 老實說：**架設需要一點技術**（適合幫長輩弄的家人／工程師）；裝好後，**長輩端只有一顆大按鈕，零門檻**。
+> 需求：**Windows 11 + NVIDIA 顯卡（8GB 可跑）+ WSL2 / Ubuntu + Python 3.10+**。
+> _Setup takes some tech comfort (for a family member or developer); once installed, the elder just presses one button._
 
-# Windows 端（companion）
-python -m venv venv
-venv\Scripts\pip install -r requirements.txt
+```powershell
+# 0) 沒裝過 WSL 的話：系統管理員 PowerShell 跑一次，重開機
+wsl --install -d Ubuntu-22.04
 
-# WSL2 端（Qwen 語音克隆）：在 Ubuntu 裝好 qwen-tts（見 PROJECT.md）
+# 1) 一鍵安裝：建 venv、裝 Windows + WSL 全部依賴、複製設定檔（會下載數 GB，請耐心）
+powershell -ExecutionPolicy Bypass -File install.ps1
 
-# 啟動（Windows 雙擊）：一鍵啟動.bat  → 先起 companion、等辨識載完、再起 Qwen
+# 2) 打開 .env，填入你的 NVIDIA_API_KEY（到 build.nvidia.com 免費申請）
+
+# 3) 雙擊「一鍵啟動.bat」
 ```
 
 長輩畫面 `http://localhost:8080/`｜家人設定台 `http://localhost:8080/setup`。
