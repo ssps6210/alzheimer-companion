@@ -101,6 +101,8 @@
 
 ## 🚀 安裝 · Install
 
+**👉 第一次裝？看 [手把手安裝指南](docs/安裝指南.md)** —— 給非工程師，含前置準備 + 常見問題 FAQ。
+
 > 老實說：**架設需要一點技術**（適合幫長輩弄的家人／工程師）；裝好後，**長輩端只有一顆大按鈕，零門檻**。
 > 需求：**Windows 11 + NVIDIA 顯卡（8GB 可跑）+ WSL2 / Ubuntu + Python 3.10+**。
 > _Setup takes some tech comfort (for a family member or developer); once installed, the elder just presses one button._

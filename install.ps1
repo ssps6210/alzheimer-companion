@@ -9,15 +9,24 @@ Write-Host ''
 Write-Host '======================================' -ForegroundColor Cyan
 Write-Host '  阿茲海默陪伴者 · 安裝' -ForegroundColor Cyan
 Write-Host '======================================' -ForegroundColor Cyan
+Write-Host '  卡住？先讀 docs\安裝指南.md（手把手 + 常見問題）' -ForegroundColor DarkGray
+Write-Host ''
 
-# --- 0) 前置檢查 ---
+# --- 0) 前置檢查（缺什麼就明確告訴你去裝哪個） ---
 function Need($cmd, $hint) {
     if (-not (Get-Command $cmd -ErrorAction SilentlyContinue)) {
-        Write-Host "✗ 缺少 $cmd —— $hint" -ForegroundColor Red; exit 1
+        Write-Host "✗ 缺少 $cmd" -ForegroundColor Red
+        Write-Host "   → $hint" -ForegroundColor Yellow
+        Write-Host '   （逐步教學見 docs\安裝指南.md）' -ForegroundColor DarkGray
+        exit 1
     }
 }
-Need python 'https://www.python.org 裝 Python 3.10+（安裝時勾 Add to PATH）'
-Need wsl '系統管理員 PowerShell 跑：wsl --install -d Ubuntu-22.04，重開機後再來'
+Need python '到 python.org 裝 Python 3.10+，安裝時「勾 Add python.exe to PATH」，裝完重開這個視窗'
+Need wsl '用「系統管理員」PowerShell 跑一次：wsl --install -d Ubuntu-22.04，重開機後再回來'
+$pyver = (python -c "import sys;print(f'{sys.version_info.major}.{sys.version_info.minor}')" 2>$null)
+if ($pyver -and ([version]$pyver -lt [version]'3.10')) {
+    Write-Host "⚠ 你的 Python 是 $pyver，建議 3.10 以上（可能有相容問題）" -ForegroundColor Yellow
+}
 
 $gpu = (wsl -d Ubuntu-22.04 -u root -- bash -lc "nvidia-smi --query-gpu=name --format=csv,noheader 2>/dev/null")
 if ($gpu) { Write-Host "✓ GPU：$gpu" -ForegroundColor Green }
