@@ -50,16 +50,16 @@
 
 ### 3.1 大腦 + 網頁：companion（Windows）
 ```powershell
-D:\elder-companion\venv\Scripts\python.exe D:\elder-companion\companion_web.py
+venv\Scripts\python.exe companion_web.py
 ```
-- 監聽 `:8080`，自動讀 `D:\elder-companion\.env`。
+- 監聽 `:8080`，自動讀 `.env`。
 - 健康檢查：`Invoke-RestMethod http://localhost:8080/health`
   → 回 `whisper.loaded / mimo.ok(大腦) / cosyvoice.ok(TTS) / phrases`。
 - log：`server.out.log` / `server.err.log`。
 
 ### 3.2 爸爸的聲音：Qwen TTS（WSL2）
 ```bash
-bash /mnt/d/elder-companion/scripts/_start_qwen.sh   # 用 /root/rvc_env 跑 qwen_tts_api.py，:50000
+bash scripts/_start_qwen.sh   # 用 /root/rvc_env 跑 qwen_tts_api.py，:50000
 ```
 - 不起則開放對話自動退回 edge-tts（`zh-TW-YunJheNeural`，非爸爸聲）。
 - 健康：`curl http://localhost:50000/health` → `{status, ref_loaded, model}`。
@@ -91,7 +91,7 @@ bash /mnt/d/elder-companion/scripts/_start_qwen.sh   # 用 /root/rvc_env 跑 qwe
 |---|---|
 | model | `nvidia/nemotron-3-super-120b-a12b`（120B MoE, 12B active）|
 | 端點 | `https://integrate.api.nvidia.com/v1`（OpenAI 相容 `/chat/completions`）|
-| key | 環境變數 `NVIDIA_API_KEY`（值 `nvapi-…`，來源 `D:\hermes\.env`，已寫進本專案 `.env`）|
+| key | 環境變數 `NVIDIA_API_KEY`（`nvapi-…`；到 build.nvidia.com 免費申請，填進 `.env`）|
 | conf | `api_key_env: NVIDIA_API_KEY`、`disable_thinking: true`、`max_tokens 80`、`timeout 30` |
 | 速度 | health ~0.6s；一般回覆 ~1s（比 MiMo 的 0.8–21s 快又穩）|
 
@@ -142,7 +142,7 @@ bash /mnt/d/elder-companion/scripts/_start_qwen.sh   # 用 /root/rvc_env 跑 qwe
 - ✅ CLI 已裝（winget，路徑 `...\WinGet\Packages\Ngrok.Ngrok...\ngrok.exe`），已 `ngrok update` 升到 **3.39.9**（帳號要求 ≥3.20.0）。
 - ✅ authtoken 已接：`ngrok config add-authtoken …` → 存於 `%LOCALAPPDATA%\ngrok\ngrok.yml`。
 - ✅ 帳號**免費固定域名 = `coexist-sherry-parish.ngrok-free.dev`**（重開不變，可當家人固定網址）。
-- ❌ **卡住**：該域名目前被**另一個 ngrok agent 佔用**（`ERR_NGROK_334 already online`；直接打回 404，不是本專案服務，也不在本機 Windows/排程 → 疑似在 WSL / 別台 / hermes 的通道）。要嘛找出來停掉、要嘛 `--pooling-enabled`（不建議，會分流）。
+- ❌ **卡住**：該域名目前被**另一個 ngrok agent 佔用**（`ERR_NGROK_334 already online`；直接打回 404，不是本專案服務，也不在本機 Windows/排程 → 疑似在 WSL / 別台的通道）。要嘛找出來停掉、要嘛 `--pooling-enabled`（不建議，會分流）。
 - ⚠️ **免費版坑**：開網址會先跳英文警告頁「You are about to visit…」要按 Visit Site → **對失智爺爺很糟**。正式給爺爺要嘛 ngrok 付費($10/月，去警告頁)、要嘛改 **Tailscale Funnel / cloudflared 具名通道**（免費、無警告頁）。
 - 開通道指令（域名釋放後）：
   ```powershell
@@ -183,7 +183,7 @@ bash /mnt/d/elder-companion/scripts/_start_qwen.sh   # 用 /root/rvc_env 跑 qwe
 - **auto 模式嚴重卡死 ×2**：① 雜訊觸發送出後沒清 `processing` class → 按鈕死鎖（修：續聽前清狀態 + `NOSPEECH_MAX=4` 連續沒聽到就休息）；② getUserMedia await 競態 → 放開手仍無限錄音／proc 未建就用（修：`pressed`+`micBusy` 旗標 + `ctx.close()`）。
 - **其他**：半夜 0-4 點講「下午」→ 加凌晨/中午+12h制；滑鼠移出/touchcancel 收不掉錄音；auto 播放時按鈕標籤誤導；`endTurn` 蓋掉錄音中 UI；奇數位元組 `frombuffer` 500；/setup 試聽 blob URL 不 revoke；watchdog.ps1 補 BOM。
 
-## 12. 檔案結構（全在 `D:\elder-companion\`）
+## 12. 檔案結構（皆在專案資料夾內）
 ```
 根/         companion_web.py(主) qwen_tts_api.py(WSL TTS · 現役僅此二支)
            conf.yaml .env .env.example .gitignore requirements.txt watchdog.ps1
@@ -204,11 +204,11 @@ legacy/     舊實驗檔 + 2026-07 清理移入：cosyvoice_api.py / stt_api.py 
 ## 13. 環境 / 金鑰位置（值不寫這裡，開源安全）
 | 用途 | 環境變數 | 值在哪 |
 |---|---|---|
-| 大腦 Nemotron | `NVIDIA_API_KEY` | `D:\elder-companion\.env`（源自 `D:\hermes\.env`）|
+| 大腦 Nemotron | `NVIDIA_API_KEY` | `.env`|
 | 舊 MiMo（退役）| `MIMO_API_KEY` | `.env`（**待輪替/刪**）|
 | 家人通報 | `TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHAT_ID` | 環境變數（未設則通報關）|
 | Qwen 參考音/模型 | `QWEN_REF` / `QWEN_MODEL` / `QWEN_PORT` | 預設在 `qwen_tts_api.py`，可環境覆蓋 |
-- Windows venv：`D:\elder-companion\venv`；WSL venv：`/root/rvc_env`（Ubuntu-22.04，**唯一現役 WSL 環境**）。
+- Windows venv：`venv`；WSL venv：`/root/rvc_env`（Ubuntu-22.04，**唯一現役 WSL 環境**）。
 - **磁碟清理（2026-07-10）**：WSL 內刪了 `cosyvoice_env`/`seed-vc`/`CosyVoice`/`RVC` 廢棄環境 + pip 快取；HF 快取只留 Qwen 1.7B（`~/.cache/huggingface` 14G→4.3G，刪了 NUTN台語/hubert/Qwen0.6B/bigvgan/whisper-small）。ext4 用量降到 ~14G。⚠️ **但 C 碟的 `ext4.vhdx`（~37G）原地壓縮無效** —— WSL2 sparse vhdx 已知坑，diskpart / Optimize-VHD / 填零全 ≈0（填零還危險：ext4 掛 1TB 虛擬盤會失控）。要真正還 C 碟空間，須 `wsl --export`→`--unregister`→`--import` **搬到 D 碟**（順帶重建成 ~14G 的乾淨 vhdx）。
 - **Docker Desktop**：本機有裝（`docker-desktop` WSL 發行版 + `docker_data.vhdx`，約佔 C 碟 8G），**爺爺專案完全沒用到**；有自動啟動的 `com.docker.service` watchdog，要清得先停服務+關自動啟動才不會補回。
 - **CPU 防當**：本機 min processor state 釘 100% 避 AMD Kernel-Power 41（正解在 BIOS Global C-state Control）。
