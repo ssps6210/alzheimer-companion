@@ -1,6 +1,7 @@
 #!/bin/bash
-SRC=/mnt/d/elder-companion/recordings/Father_Voice/Father_1min_long.m4a
-REF=/mnt/d/elder-companion/father_reference.wav
+ROOT="$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)"
+SRC=$ROOT/recordings/Father_Voice/Father_1min_long.m4a
+REF=$ROOT/father_reference.wav
 cd /root/seed-vc || exit 1
 PY=/root/rvc_env/bin/python
 EDGE=/root/rvc_env/bin/edge-tts

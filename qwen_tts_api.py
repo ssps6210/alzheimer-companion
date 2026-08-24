@@ -8,7 +8,7 @@ Qwen3-TTS 聲音克隆服務（跑在 WSL2，被 Windows 的 companion 呼叫）
   3. 都沒有 → /tts 回 503 → companion 自動改用通用聲（edge-tts），不會壞。
 換音色不用重啟：companion 上傳後打 POST /reload-ref 熱重載。
 
-啟動：/root/rvc_env/bin/python /mnt/d/elder-companion/qwen_tts_api.py
+啟動：由 scripts/_start_qwen.sh 啟動（自動定位專案路徑，無需硬編）
 """
 import os, io, re
 import numpy as np
@@ -19,9 +19,10 @@ from fastapi.responses import Response
 from pydantic import BaseModel
 import uvicorn
 
-VOICES_DIR = os.environ.get("QWEN_VOICES", "/mnt/d/elder-companion/voices")
+_HERE = os.path.dirname(os.path.abspath(__file__))   # 專案根目錄（本檔所在）；放哪都能跑
+VOICES_DIR = os.environ.get("QWEN_VOICES", os.path.join(_HERE, "voices"))
 ACTIVE_REF = os.path.join(VOICES_DIR, "active_reference.wav")   # 使用者上傳的音色（優先）
-LEGACY_REF = os.environ.get("QWEN_REF", "/mnt/d/elder-companion/father_reference.wav")  # 本地舊預設
+LEGACY_REF = os.environ.get("QWEN_REF", os.path.join(_HERE, "father_reference.wav"))  # 本地舊預設
 MODEL_ID = os.environ.get("QWEN_MODEL", "Qwen/Qwen3-TTS-12Hz-1.7B-Base")
 LANG = os.environ.get("QWEN_LANG", "Chinese")
 PORT = int(os.environ.get("QWEN_PORT", 50000))

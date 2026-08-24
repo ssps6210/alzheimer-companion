@@ -1,6 +1,7 @@
 #!/bin/bash
+ROOT="$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)"
 SRC=/mnt/d/Downloads/Father_Voice
-OUT=/mnt/d/elder-companion/father_reference.wav
+OUT=$ROOT/father_reference.wav
 tmp=$(mktemp -d); list="$tmp/list.txt"; : > "$list"
 # 挑較長、清楚的幾句，去靜音+降噪後接起來當參考音
 i=0

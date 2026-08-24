@@ -1,8 +1,9 @@
 import torch, soundfile as sf, os, time
 from qwen_tts import Qwen3TTSModel
 
-REF = "/mnt/d/elder-companion/father_reference.wav"
-ref_text = open("/mnt/d/elder-companion/father_reference.txt", encoding="utf-8").read().strip()
+_R = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))   # 專案根（scripts 上一層）
+REF = os.path.join(_R, "father_reference.wav")
+ref_text = open(os.path.join(_R, "father_reference.txt"), encoding="utf-8").read().strip()
 
 print("載入 Qwen3-TTS 1.7B ...", flush=True)
 model = Qwen3TTSModel.from_pretrained("Qwen/Qwen3-TTS-12Hz-1.7B-Base",

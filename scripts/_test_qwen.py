@@ -1,5 +1,6 @@
-import torch, gc, soundfile as sf
-REF = "/mnt/d/elder-companion/father_reference.wav"
+import torch, gc, soundfile as sf, os
+_R = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))   # 專案根（scripts 上一層）
+REF = os.path.join(_R, "father_reference.wav")
 TXT = "爺爺，今天天氣真好，有沒有想出去走走？我等一下回去看你。"
 
 # 1. 轉逐字稿當 ref_text

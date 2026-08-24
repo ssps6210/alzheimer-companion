@@ -1,8 +1,9 @@
 ﻿$ErrorActionPreference = 'SilentlyContinue'
 try { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8 } catch {}
 try { $Host.UI.RawUI.WindowTitle = '爺爺陪伴系統 · 啟動' } catch {}
-$root = 'D:\elder-companion'
+$root = Split-Path -Parent $PSScriptRoot   # 專案根目錄（scripts 的上一層）；放哪都能跑
 $py   = Join-Path $root 'venv\Scripts\python.exe'
+$wslRoot = "/mnt/" + $root.Substring(0,1).ToLower() + ($root.Substring(2) -replace '\\','/')
 
 Write-Host ''
 Write-Host '=====================================' -ForegroundColor Cyan
@@ -34,7 +35,7 @@ for ($i = 0; $i -lt 60; $i++) {
 
 # 3) 語音辨識就緒後，才起 爸爸的聲音（Qwen TTS，WSL :50000）
 Write-Host '[3/3] 啟動 爸爸的聲音（Qwen TTS）...' -ForegroundColor Yellow
-Start-Process wsl -ArgumentList '-d','Ubuntu-22.04','-u','root','--','bash','/mnt/d/elder-companion/scripts/_start_qwen.sh' -WindowStyle Hidden
+Start-Process wsl -ArgumentList '-d','Ubuntu-22.04','-u','root','--','bash',"$wslRoot/scripts/_start_qwen.sh" -WindowStyle Hidden
 # 等 Qwen 就緒（最多 ~60 秒），好在畫面顯示正確狀態
 for ($i = 0; $i -lt 30; $i++) {
     try { if ((Invoke-RestMethod 'http://localhost:50000/health' -TimeoutSec 3).ref_loaded) { break } } catch {}

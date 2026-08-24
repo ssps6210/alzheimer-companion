@@ -1,6 +1,7 @@
 #!/bin/bash
+ROOT="$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)"
 SRC=/mnt/d/Downloads/Father_Voice
-OUT=/mnt/d/elder-companion/father_reference.wav
+OUT=$ROOT/father_reference.wav
 tmp=$(mktemp -d); list="$tmp/list.txt"; : > "$list"
 # 0.35s 自然停頓（不硬切，避免接縫讓生成失穩）
 ffmpeg -nostdin -y -f lavfi -i anullsrc=r=16000:cl=mono -t 0.35 "$tmp/sil.wav" 2>/dev/null

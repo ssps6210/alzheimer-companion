@@ -1,6 +1,8 @@
 ﻿$ErrorActionPreference = 'SilentlyContinue'
 try { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8 } catch {}
 try { $Host.UI.RawUI.WindowTitle = '爺爺陪伴系統 · 停止' } catch {}
+$root = Split-Path -Parent $PSScriptRoot
+$wslRoot = "/mnt/" + $root.Substring(0,1).ToLower() + ($root.Substring(2) -replace '\\','/')
 
 Write-Host ''
 Write-Host '=====================================' -ForegroundColor Cyan
@@ -26,7 +28,7 @@ $n = Get-Process ngrok -ErrorAction SilentlyContinue
 if ($n) { $n | Stop-Process -Force -ErrorAction SilentlyContinue; Write-Host '  已停止 ngrok 通道' -ForegroundColor Yellow }
 
 # 爸爸的聲音 Qwen TTS（WSL）— pkill 放獨立腳本，避免殺到自己那條 bash
-Start-Process wsl -ArgumentList '-d','Ubuntu-22.04','-u','root','--','bash','/mnt/d/elder-companion/scripts/_stop_qwen.sh' -WindowStyle Hidden -Wait
+Start-Process wsl -ArgumentList '-d','Ubuntu-22.04','-u','root','--','bash',"$wslRoot/scripts/_stop_qwen.sh" -WindowStyle Hidden -Wait
 Write-Host '  已停止 爸爸的聲音（Qwen TTS）' -ForegroundColor Yellow
 
 Write-Host ''
