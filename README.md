@@ -99,6 +99,26 @@
 - **LLM** — 任何 OpenAI 相容端點（`conf.yaml` 可換 base_url / model）
 - **TTS** — `Qwen/Qwen3-TTS-12Hz-1.7B-Base` 零樣本克隆（Apache-2.0）
 
+## 🖥️ 配置需求 · System requirements
+
+跑這套的是**架設的電腦**（長輩只要一台有 Chrome 的平板）。GPU 顯示記憶體是關鍵。
+
+| | 最低（能跑） | 建議（順、穩） |
+|---|---|---|
+| **顯卡 GPU** | NVIDIA **8GB VRAM**（RTX 2060/3060/4060、2080…） | NVIDIA **12GB+ VRAM**（RTX 3060 12G / 4070 / 2080 Ti） |
+| **系統記憶體 RAM** | 8 GB | 16 GB+ |
+| **CPU** | 近代 4 核 | 6 核以上 |
+| **硬碟** | **30 GB 可用**（模型 + WSL） | **50 GB+ SSD** |
+| **作業系統** | Windows 10 (2004+) / 11 ＋ WSL2 | Windows 11 ＋ WSL2 |
+| **網路** | 寬頻（LLM 走雲端 API；首次下載數 GB） | 同左 |
+| **長輩的裝置** | 任何有 Chrome 的平板／手機（同一 WiFi） | 平板（螢幕大好按） |
+
+> - **沒有 NVIDIA 顯卡目前跑不動**（語音辨識 + 聲音克隆都吃 GPU）。
+> - **8GB VRAM 是實測可跑**（作者用 RTX 4060 Laptop 8GB）：whisper + 克隆聲同卡剛好塞下，偶爾會搶爆記憶體當機（已用「錯開載入」緩解）；**12GB+ 明顯更穩**。
+> - _No NVIDIA GPU = won't run for now. 8GB VRAM works (tight); 12GB+ recommended._
+
+---
+
 ## 🚀 安裝 · Install
 
 **👉 第一次裝？看 [手把手安裝指南](docs/安裝指南.md)** —— 給非工程師，含前置準備 + 常見問題 FAQ。
