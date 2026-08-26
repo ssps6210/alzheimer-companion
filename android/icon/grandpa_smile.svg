@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="40%" r="75%">
+      <stop offset="0%" stop-color="#FCE9D0"/>
+      <stop offset="100%" stop-color="#F0B472"/>
+    </radialGradient>
+  </defs>
+  <!-- 暖色背景 -->
+  <rect width="512" height="512" rx="100" fill="url(#bg)"/>
+
+  <!-- 耳朵 -->
+  <circle cx="118" cy="292" r="30" fill="#EDB07C"/>
+  <circle cx="394" cy="292" r="30" fill="#EDB07C"/>
+
+  <!-- 白頭髮（兩側 + 頭頂微禿） -->
+  <ellipse cx="168" cy="196" rx="62" ry="52" fill="#F5F2ED"/>
+  <ellipse cx="344" cy="196" rx="62" ry="52" fill="#F5F2ED"/>
+  <ellipse cx="256" cy="166" rx="62" ry="40" fill="#F5F2ED"/>
+
+  <!-- 臉 -->
+  <circle cx="256" cy="292" r="150" fill="#F6CE9E"/>
+
+  <!-- 白眉毛 -->
+  <path d="M176 240 q26 -14 52 -2" stroke="#E9E4DB" stroke-width="12" fill="none" stroke-linecap="round"/>
+  <path d="M284 238 q26 -12 52 2" stroke="#E9E4DB" stroke-width="12" fill="none" stroke-linecap="round"/>
+
+  <!-- 永遠開心的彎眼 ^ ^ -->
+  <path d="M178 294 q24 -32 48 0" stroke="#5A4636" stroke-width="13" fill="none" stroke-linecap="round"/>
+  <path d="M286 294 q24 -32 48 0" stroke="#5A4636" stroke-width="13" fill="none" stroke-linecap="round"/>
+
+  <!-- 紅通通的臉頰 -->
+  <circle cx="172" cy="338" r="26" fill="#F3968A" opacity="0.5"/>
+  <circle cx="340" cy="338" r="26" fill="#F3968A" opacity="0.5"/>
+
+  <!-- 鼻子 -->
+  <path d="M256 308 q11 20 -3 34" stroke="#E0A86C" stroke-width="10" fill="none" stroke-linecap="round"/>
+
+  <!-- 大大的笑 -->
+  <path d="M196 362 q60 70 120 0 q-60 30 -120 0 Z" fill="#B44E2C"/>
+</svg>
