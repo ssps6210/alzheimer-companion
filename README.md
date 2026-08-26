@@ -73,6 +73,8 @@ powershell -ExecutionPolicy Bypass -File install.ps1   # 一鍵裝好所有依�
 
 長輩畫面 `http://localhost:8080/`｜設定台 `/setup`。技術細節見 **[`PROJECT.md`](PROJECT.md)**。
 
+> 📱 想把長輩畫面做成**平板 App**（一點就開、全螢幕、麥克風原生授權）？見 [`android/`](android/)。
+
 **技術棧：** STT `faster-whisper`（本地）· LLM 任何 OpenAI 相容端點（預設 NVIDIA Nemotron）· TTS `Qwen3-TTS` 零樣本克隆。
 
 ## 🔒 隱私 · Privacy

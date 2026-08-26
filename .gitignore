@@ -70,3 +70,12 @@ ui_state.json
 
 # 本地設定（persona 等各自不同，不上傳）；範本見 conf.example.yaml
 conf.yaml
+
+# Android app 建置產物（原始碼保留，產物不入庫）
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/.idea/
+*.apk
+*.aab

@@ -1,0 +1,4 @@
+// 頂層建置檔。AGP 版本；Android Studio 可能提示升級，讓它升即可。
+plugins {
+    id 'com.android.application' version '8.2.2' apply false
+}

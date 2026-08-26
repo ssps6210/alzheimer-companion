@@ -1,0 +1,27 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'com.eldercompanion'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'com.eldercompanion'
+        minSdk 24            // Android 7.0 以上（涵蓋舊平板）
+        targetSdk 34
+        versionCode 1
+        versionName '1.0'
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+// 純用 Android framework（WebView），不需要額外依賴。
