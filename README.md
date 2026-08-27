@@ -42,11 +42,25 @@
 - 🔒 **隱私優先**：家人的聲音、照片、對話都**留在你自己的電腦**，永不上傳（只有 LLM 文字會呼叫雲端，可換成本地全離線）
 - 🧓 **為長者設計**：大按鈕、暖色、日夜自動；可選「按住說話」或「自動連續對話」
 
+## 🔒 隱私 · Privacy
+
+**你的聲音、照片、錄音、對話記錄，都留在你自己的電腦。** 它們永遠不會上傳到我們或任何人的伺服器（repo 也被 `.gitignore` 擋掉，不含任何個人資料）。
+
+唯一離開本機的是**大腦 LLM**：對話的**文字**會送到你設定的雲端 API（預設 NVIDIA）。想連大腦也留在本機、做到**完全離線**，把 `conf.yaml` 的 `llm.base_url` 指向本地 LLM（如 [Ollama](https://ollama.com) 的 OpenAI 相容端點）即可——聲音與資料本來就已在本機。
+
+> _Your voices, photos, recordings and conversation history stay on your own computer — they never leave it. The only thing that leaves is the LLM call: conversation **text** goes to the cloud API you configure (NVIDIA by default). Point `llm.base_url` at a local LLM (e.g. [Ollama](https://ollama.com)) for a fully offline setup._
+
 ## 🎙️ 自帶你的聲音 · Bring your own voice
 
 **這個 repo 不含任何人的聲音。** clone 後開 `/setup`「設定陪伴聲音」，上傳一段**清楚、安靜、10–30 秒**的家人錄音（wav / mp3 / m4a）→ 即時套用。設定前用通用聲頂著，不會壞。
 
 > _No voice ships with the repo. Open `/setup`, upload a 10–30s clip, and it becomes the companion voice — instantly._
+
+## 🖥️ 配置需求 · Requirements
+
+在一台**架設的電腦**上跑（長輩只要一台有 Chrome 的平板）。**推薦一張 NVIDIA 顯卡**——語音又快又穩（作者用 RTX 4060 8GB）。**沒有顯卡也能用 CPU 版**：純 Windows、免 WSL，家人的聲音一樣克隆、完全本機，只是慢一點。系統 Windows 10 / 11。
+
+> _Recommended: an NVIDIA GPU for fast, smooth speech. No GPU? The CPU build works too — same cloned family voice, fully local, just slower._
 
 ## 🛡️ 同意與浮水印 · Consent & watermark
 
@@ -57,12 +71,6 @@
 - 只使用**你有權使用**的聲音：本人，或已取得本人同意的家人。
 
 > _Voice cloning is dual-use. By default this project requires **spoken consent** — recorded in the same clip that becomes the voice — and **watermarks every generated clip** with AudioSeal so output is detectable as AI-synthesized. Use only voices you're entitled to use._
-
-## 🖥️ 配置需求 · Requirements
-
-在一台**架設的電腦**上跑（長輩只要一台有 Chrome 的平板）。**推薦一張 NVIDIA 顯卡**——語音又快又穩（作者用 RTX 4060 8GB）。**沒有顯卡也能用 CPU 版**：純 Windows、免 WSL，家人的聲音一樣克隆、完全本機，只是慢一點。系統 Windows 10 / 11。
-
-> _Recommended: an NVIDIA GPU for fast, smooth speech. No GPU? The CPU build works too — same cloned family voice, fully local, just slower._
 
 ## 🚀 安裝 · Install
 
@@ -84,14 +92,6 @@ powershell -ExecutionPolicy Bypass -File install.ps1   # 一鍵裝好所有依�
 > 📱 想把長輩畫面做成**平板 App**（一點就開、全螢幕、麥克風原生授權）？見 [`android/`](android/)。
 
 **技術棧：** STT `faster-whisper`（本地）· LLM 任何 OpenAI 相容端點（預設 NVIDIA Nemotron）· TTS `Qwen3-TTS` 零樣本克隆。
-
-## 🔒 隱私 · Privacy
-
-**你的聲音、照片、錄音、對話記錄，都留在你自己的電腦。** 它們永遠不會上傳到我們或任何人的伺服器（repo 也被 `.gitignore` 擋掉，不含任何個人資料）。
-
-唯一離開本機的是**大腦 LLM**：對話的**文字**會送到你設定的雲端 API（預設 NVIDIA）。想連大腦也留在本機、做到**完全離線**，把 `conf.yaml` 的 `llm.base_url` 指向本地 LLM（如 [Ollama](https://ollama.com) 的 OpenAI 相容端點）即可——聲音與資料本來就已在本機。
-
-> _Your voices, photos, recordings and conversation history stay on your own computer — they never leave it. The only thing that leaves is the LLM call: conversation **text** goes to the cloud API you configure (NVIDIA by default). Point `llm.base_url` at a local LLM (e.g. [Ollama](https://ollama.com)) for a fully offline setup._
 
 ## ☕ 支持 · Support
 
