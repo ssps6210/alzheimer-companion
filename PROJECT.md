@@ -120,6 +120,13 @@ bash scripts/_start_qwen.sh   # 用 /root/rvc_env 跑 qwen_tts_api.py，:50000
 - 同意句在**同一段錄音**裡 → 說話者＝同意者，把同意綁死在該聲音。證明存 `voices/active_reference.consent.json`（phrase / transcript / ref 的 sha256 / ts；`voices/` 已 gitignore）。
 - `CONSENT_REQUIRED=0` 可關（進階／本機；本機父親音走 `QWEN_REF` 不經此路，不受影響）。常數在 `companion_web.py`（`CONSENT_PHRASE` / `CONSENT_KEYS`）。
 
+## 6.6 無顯卡 CPU 版（XTTS-CPU，2026-08）
+- 目的：降門檻——沒 NVIDIA 顯卡的家庭也能用，且**保住家人聲**（一樣克隆）、**完全本機**（連 WSL 都不用）。取捨：慢（CPU 一句話數秒~十幾秒，固定句秒回墊著）。
+- `xtts_cpu_api.py`：Coqui **XTTS-v2**（`coqui-tts` 分支，CPML **非商業**授權，家庭用 OK；`COQUI_TOS_AGREED=1` 免互動下載）跑 CPU，講**與 `qwen_tts_api.py` 同一套 HTTP 介面**（`/tts`,`/health`,`/reload-ref`），**同 port 50000 → companion 免改**。是 Qwen 的 drop-in 替代（跑其一即可）。
+- 音色同一套：`voices/active_reference.wav`（`/setup/set-voice` 同一道同意閘門）。浮水印共用 `wm.py`（AudioSeal，CPU）——Qwen 與 XTTS 都經同一模組（`wm.load/ok/apply`）。
+- 安裝/啟動（純 Windows，不碰 WSL/CUDA）：`install_cpu.ps1`（venv + `requirements-cpu.txt`：faster-whisper + `coqui-tts` + torch(CPU) + audioseal）→ 複製 `conf.cpu.example.yaml`(whisper `device:cpu`/`compute_type:int8`/`model:small`、`cosyvoice_timeout:90`)→ `scripts/launch_cpu.ps1`（起 companion + `xtts_cpu_api.py` 兩支 Windows 行程）／`一鍵啟動_CPU版.bat`。`stop.ps1` 已一併收 `xtts_cpu_api.py`。
+- 隱私定位：聲音/照片/記錄全本機；**唯一離開本機的是 LLM 文字**（雲端 Nemotron）。要 100% 離線可把 `llm.base_url` 指向本地 LLM（Ollama 等 OpenAI 相容端點）——見 README「隱私」。
+
 ---
 
 ## 7. 語音辨識 STT = faster-whisper（本地）

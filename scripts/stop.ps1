@@ -23,6 +23,11 @@ Get-CimInstance Win32_Process -Filter "Name='python.exe'" -ErrorAction SilentlyC
     Where-Object { $_.CommandLine -like '*companion_web.py*' } |
     ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
 
+# 家人的聲音 XTTS-CPU（Windows；CPU 版才有，GPU 版沒這個、無害）
+Get-CimInstance Win32_Process -Filter "Name='python.exe'" -ErrorAction SilentlyContinue |
+    Where-Object { $_.CommandLine -like '*xtts_cpu_api.py*' } |
+    ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
+
 # ngrok 通道（若有）
 $n = Get-Process ngrok -ErrorAction SilentlyContinue
 if ($n) { $n | Stop-Process -Force -ErrorAction SilentlyContinue; Write-Host '  已停止 ngrok 通道' -ForegroundColor Yellow }

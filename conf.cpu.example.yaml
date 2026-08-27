@@ -1,0 +1,28 @@
+# 無顯卡 CPU 版設定範本 —— 複製成 conf.yaml：
+#   copy conf.cpu.example.yaml conf.yaml
+# 與 conf.example.yaml 的唯一差別是「語音辨識改用 CPU」＋逾時放寬；其餘沿用內建預設（爺爺人設等）。
+#
+# 隱私：聲音、照片、對話記錄都留在「你自己的電腦」。
+#       唯一離開本機的是大腦 LLM —— 對話「文字」會送到雲端（NVIDIA）。
+#       想連大腦也 100% 本機（完全離線），見 README「完全離線」一節（改用本地 LLM）。
+
+asr:                          # 語音辨識（STT）—— CPU
+  model: small                # CPU 上 medium 太慢；small 已夠用（要更快可用 base）
+  device: cpu
+  compute_type: int8          # CPU 量化：快很多、也更省記憶體
+  language: zh
+
+llm:                          # 大腦（雲端；見上方隱私說明）
+  base_url: https://integrate.api.nvidia.com/v1
+  model: nvidia/nemotron-3-super-120b-a12b
+  api_key_env: NVIDIA_API_KEY
+  temperature: 0.7
+  max_tokens: 80
+  timeout: 30
+  disable_thinking: true
+
+tts:                          # 語音合成 —— XTTS-CPU（與 GPU 版同 port，drop-in，companion 免改）
+  cosyvoice_url: http://localhost:50000/tts
+  cosyvoice_health: http://localhost:50000/health
+  cosyvoice_timeout: 90       # CPU 克隆慢，逾時放寬（常用話走固定句秒回墊著）
+  edge_voice: zh-TW-YunJheNeural

@@ -69,7 +69,9 @@
 | **硬碟** | 30 GB 可用 | 50 GB+ SSD |
 | **系統** | Windows 10 (2004+) / 11 ＋ WSL2 | Windows 11 ＋ WSL2 |
 
-> **沒有 NVIDIA 顯卡目前跑不動。** 8GB 實測可跑（作者用 RTX 4060 8GB）但偶爾會卡；12GB+ 明顯更穩。
+> 8GB 實測可跑（作者用 RTX 4060 8GB）但偶爾會卡；12GB+ 明顯更穩。
+>
+> 🖥️ **沒有 NVIDIA 顯卡?** 也能用 **CPU 版**：家人的聲音一樣是克隆的、而且**完全在你自己的電腦上**（連 WSL 都不用裝），代價是語音合成較慢（一句話數秒~十幾秒；常用話走固定句仍秒回）。見下方「無顯卡 CPU 版」。
 
 ## 🚀 安裝 · Install
 
@@ -83,15 +85,22 @@ powershell -ExecutionPolicy Bypass -File install.ps1   # 一鍵裝好所有依�
 
 長輩畫面 `http://localhost:8080/`｜設定台 `/setup`。技術細節見 **[`PROJECT.md`](PROJECT.md)**。
 
+> 🖥️ **無顯卡 CPU 版**（純 Windows，不用 WSL、不用 CUDA）——家人的聲音一樣克隆、**完全本機**，只是慢一點：
+> ```powershell
+> powershell -ExecutionPolicy Bypass -File install_cpu.ps1   # 裝好 → 雙擊「一鍵啟動_CPU版.bat」
+> ```
+
 > 📱 想把長輩畫面做成**平板 App**（一點就開、全螢幕、麥克風原生授權）？見 [`android/`](android/)。
 
 **技術棧：** STT `faster-whisper`（本地）· LLM 任何 OpenAI 相容端點（預設 NVIDIA Nemotron）· TTS `Qwen3-TTS` 零樣本克隆。
 
 ## 🔒 隱私 · Privacy
 
-所有聲音、照片、錄音、對話記憶、金鑰都被 `.gitignore` 擋掉——**repo 不含任何個人資料**。對話存本機 `memory.json`，只有 LLM 呼叫會離開本機。
+**你的聲音、照片、錄音、對話記錄，都留在你自己的電腦。** 它們永遠不會上傳到我們或任何人的伺服器（repo 也被 `.gitignore` 擋掉，不含任何個人資料）。
 
-> _Every voice / photo / recording / conversation / key is gitignored — no personal data in this repo._
+唯一離開本機的是**大腦 LLM**：對話的**文字**會送到你設定的雲端 API（預設 NVIDIA）。想連大腦也留在本機、做到**完全離線**，把 `conf.yaml` 的 `llm.base_url` 指向本地 LLM（如 [Ollama](https://ollama.com) 的 OpenAI 相容端點）即可——聲音與資料本來就已在本機。
+
+> _Your voices, photos, recordings and conversation history stay on your own computer — they never leave it. The only thing that leaves is the LLM call: conversation **text** goes to the cloud API you configure (NVIDIA by default). Point `llm.base_url` at a local LLM (e.g. [Ollama](https://ollama.com)) for a fully offline setup._
 
 ## ☕ 支持 · Support
 

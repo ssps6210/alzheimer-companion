@@ -1,0 +1,20 @@
+# 無顯卡 CPU 版依賴（全部裝在 Windows，不需要 WSL / CUDA）。
+# 用 install_cpu.ps1 會自動裝這份。
+# 大部分和 requirements.txt 相同，另加「CPU 版語音克隆 + 浮水印」。
+
+fastapi
+uvicorn
+python-multipart
+faster-whisper          # 語音辨識（CPU：conf 用 device=cpu, compute_type=int8）
+av                      # faster-whisper 解碼 mp3/m4a 用（PyAV）
+edge-tts                # 通用聲 fallback
+requests
+numpy
+pyyaml
+soundfile               # XTTS 輸出寫 wav
+
+# CPU 版語音克隆（XTTS-v2，Coqui 社群維護分支）＋ AI 浮水印
+torch                   # Windows 上 pip 預設就是 CPU 版
+torchaudio
+coqui-tts               # 提供 TTS.api（XTTS-v2 零樣本克隆）；模型 CPML 授權（僅非商業，家庭用 OK）
+audioseal               # AI 浮水印（可選；裝不了會自動略過，克隆聲仍可用但不標記）

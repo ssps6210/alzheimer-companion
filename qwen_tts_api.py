@@ -18,6 +18,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import Response
 from pydantic import BaseModel
 import uvicorn
+import wm   # 共用的 AI 浮水印（AudioSeal，CPU）；Qwen 與 XTTS-CPU 兩個服務共用
 
 _HERE = os.path.dirname(os.path.abspath(__file__))   # 專案根目錄（本檔所在）；放哪都能跑
 VOICES_DIR = os.environ.get("QWEN_VOICES", os.path.join(_HERE, "voices"))
@@ -27,52 +28,11 @@ MODEL_ID = os.environ.get("QWEN_MODEL", "Qwen/Qwen3-TTS-12Hz-1.7B-Base")
 LANG = os.environ.get("QWEN_LANG", "Chinese")
 PORT = int(os.environ.get("QWEN_PORT", 50000))
 MAX_LEN = int(os.environ.get("QWEN_MAX_LEN", 58))   # ~16s 上限；每塊貪婪合併到 10-16s 甜蜜區（太短不像、>18s 會飄）
-WATERMARK = os.environ.get("WATERMARK", "1") != "0"  # 預設開：所有克隆語音打上可偵測的 AI 浮水印（防冒用）
-WM_SR = 16000                                        # AudioSeal 在 16kHz 運作
 
 app = FastAPI(title="Qwen3-TTS voice clone")
 model = None
 REF_AUDIO = None   # 目前生效的參考音路徑（None = 尚未設定 → /tts 回 503）
 ref_text = ""
-_wm_model = None   # AudioSeal 產生器（None = 浮水印未就緒）
-_wm_ok = False
-
-
-def _load_watermark():
-    """載入 AudioSeal 浮水印產生器（放 CPU，不佔 GPU 顯存）。
-    裝不了就大聲提醒並繼續——陪伴不能壞，但會如實回報未標記。"""
-    global _wm_model, _wm_ok
-    if not WATERMARK:
-        print("浮水印：已由 WATERMARK=0 關閉（克隆語音不會標記）"); return
-    try:
-        from audioseal import AudioSeal
-        _wm_model = AudioSeal.load_generator("audioseal_wm_16bits")
-        _wm_model.eval()
-        _wm_ok = True
-        print("浮水印：AudioSeal 就緒 ✓（每段克隆語音都標記為 AI 合成，可用 tools/detect_watermark.py 驗）")
-    except Exception as e:
-        _wm_ok = False
-        print(f"⚠ 浮水印未啟用：audioseal 載入失敗（{e}）→ 克隆語音「不會」被標記。"
-              f"　安裝：pip install audioseal")
-
-
-def _apply_watermark(audio_24k):
-    """在 24k float32 音訊上加 AudioSeal 浮水印。回 (audio, sample_rate)。
-    有浮水印 → 16k 已標記；沒有 → 原樣 24k（絕不讓合成失敗）。"""
-    if not (_wm_ok and _wm_model is not None):
-        return audio_24k, 24000
-    try:
-        import torchaudio
-        wav = torch.from_numpy(np.ascontiguousarray(audio_24k)).float()
-        wav16 = torchaudio.functional.resample(wav, 24000, WM_SR)
-        x = wav16.view(1, 1, -1)
-        with torch.no_grad():
-            wm = _wm_model.get_watermark(x, sample_rate=WM_SR)
-            y = (x + wm).squeeze().clamp(-1.0, 1.0)
-        return y.cpu().numpy().astype(np.float32), WM_SR
-    except Exception as e:
-        print(f"⚠ 這段浮水印套用失敗，改輸出未標記音訊：{e}")
-        return audio_24k, 24000
 
 
 def _transcribe(path):
@@ -148,8 +108,8 @@ def load():
             break
         except Exception as e:
             print(f"attn={impl} 不可用：{e}")
-    _apply_ref()       # 模型好了再解析音色（若要 whisper 轉稿，此時 GPU 已就緒）
-    _load_watermark()  # 載入浮水印（CPU，不影響 GPU 顯存）
+    _apply_ref()   # 模型好了再解析音色（若要 whisper 轉稿，此時 GPU 已就緒）
+    wm.load()      # 載入浮水印（CPU，不影響 GPU 顯存）
 
 
 @app.get("/health")
@@ -159,8 +119,8 @@ def health():
             "model_loaded": model is not None,
             "ref_set": REF_AUDIO is not None,
             "ref_path": REF_AUDIO or "",
-            "watermark": _wm_ok,   # 克隆語音是否打上 AI 浮水印（防冒用）
-            "sample_rate": WM_SR if _wm_ok else 24000, "model": MODEL_ID}
+            "watermark": wm.ok(),   # 克隆語音是否打上 AI 浮水印（防冒用）
+            "sample_rate": wm.WM_SR if wm.ok() else 24000, "model": MODEL_ID}
 
 
 @app.post("/reload-ref")
@@ -194,7 +154,7 @@ def tts(req: TTSReq):
     except Exception as e:
         raise HTTPException(500, str(e))
     audio = np.concatenate(chunks) if chunks else np.zeros(1, dtype=np.float32)
-    audio, out_sr = _apply_watermark(audio)   # 打上 AI 浮水印（防冒用）；未就緒則原樣輸出
+    audio, out_sr = wm.apply(audio, 24000)   # 打上 AI 浮水印（防冒用）；未就緒則原樣輸出
     buf = io.BytesIO()
     sf.write(buf, audio, out_sr, format="WAV", subtype="PCM_16")
     buf.seek(0)
