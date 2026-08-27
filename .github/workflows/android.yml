@@ -1,0 +1,56 @@
+name: Build APK
+
+# 在雲端自動 build Android APK（你我都不用裝 Android Studio）。
+#   · push 一個 v* 標籤（例如 v1.0）→ build 完直接發佈到 Releases（下載端）
+#   · 或到 Actions 頁按「Run workflow」手動 build（只產出 artifact，不發 Release）
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write   # 發佈 Release 需要
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.6'
+
+      - name: Build debug APK
+        working-directory: android
+        run: gradle assembleDebug --no-daemon --stacktrace
+
+      - name: Rename APK
+        run: cp android/app/build/outputs/apk/debug/app-debug.apk elder-companion.apk
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: elder-companion-apk
+          path: elder-companion.apk
+
+      - name: Publish to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: elder-companion.apk
+          body: |
+            爺爺的小助手 · Android App（WebView 外殼）
+
+            1. 下載下面的 `elder-companion.apk`
+            2. 手機開「允許安裝未知來源／此來源」
+            3. 安裝、開啟 → 首次會請你輸入電腦上 companion 的網址（家人管理台會顯示）
+
+            AI 仍跑在你自己的電腦上，這個 App 只是連過去的客戶端。
