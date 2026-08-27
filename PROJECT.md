@@ -113,6 +113,12 @@ bash scripts/_start_qwen.sh   # 用 /root/rvc_env 跑 qwen_tts_api.py，:50000
 - **速度**：暖機後 ~11–12s/塊（RTF~0.8，1.7B 在 4060 的地板，**已決定維持 1.7B**）。所以常見話走**固定句秒回**，只有開放對話才吃這 ~11s。
 - 參考音：`father_reference.wav`（30s，爸爸多段語句去噪+響度正規化接成）+ `father_reference.txt`（逐字稿）。
 - 依賴都在 WSL `/root/rvc_env`：`qwen-tts` / `flash-attn` / `soundfile` 等。
+- **AI 浮水印（防冒用，預設開）**：`qwen_tts_api.py` 合成後過 [AudioSeal](https://github.com/facebookresearch/audioseal)（`audioseal_wm_16bits`，放 **CPU** 不佔顯存），輸出 16k 已標記 wav。`WATERMARK=0` 可關；audioseal 沒裝 → 大聲提醒並**原樣輸出**（陪伴不會壞）。`/health` 回 `watermark` 布林、Setup 台顯示徽章。驗證：`python tools/detect_watermark.py <音檔>`。
+
+## 6.5 聲音同意閘門（防冒用，2026-08）
+- `/setup/set-voice` 設定音色前：錄音本人須在**錄音最開頭唸同意聲明**「我同意用我的聲音陪伴家人」＋前端勾選確認。companion 用自己的 whisper 轉稿後，比對關鍵詞 `("同意","陪伴")` 皆present 才放行；否則**刪掉剛寫的 active_reference** 並回 400 引導。
+- 同意句在**同一段錄音**裡 → 說話者＝同意者，把同意綁死在該聲音。證明存 `voices/active_reference.consent.json`（phrase / transcript / ref 的 sha256 / ts；`voices/` 已 gitignore）。
+- `CONSENT_REQUIRED=0` 可關（進階／本機；本機父親音走 `QWEN_REF` 不經此路，不受影響）。常數在 `companion_web.py`（`CONSENT_PHRASE` / `CONSENT_KEYS`）。
 
 ---
 
@@ -208,6 +214,8 @@ legacy/     舊實驗檔 + 2026-07 清理移入：cosyvoice_api.py / stt_api.py 
 | 舊 MiMo（退役）| `MIMO_API_KEY` | `.env`（**待輪替/刪**）|
 | 家人通報 | `TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHAT_ID` | 環境變數（未設則通報關）|
 | Qwen 參考音/模型 | `QWEN_REF` / `QWEN_MODEL` / `QWEN_PORT` | 預設在 `qwen_tts_api.py`，可環境覆蓋 |
+| AI 浮水印開關 | `WATERMARK`（預設 1；0=關）| WSL 端 `qwen_tts_api.py`（§6）|
+| 同意閘門開關 | `CONSENT_REQUIRED`（預設 1；0=關）| Windows 端 `companion_web.py`（§6.5）|
 - Windows venv：`venv`；WSL venv：`/root/rvc_env`（Ubuntu-22.04，**唯一現役 WSL 環境**）。
 - **磁碟清理（2026-07-10）**：WSL 內刪了 `cosyvoice_env`/`seed-vc`/`CosyVoice`/`RVC` 廢棄環境 + pip 快取；HF 快取只留 Qwen 1.7B（`~/.cache/huggingface` 14G→4.3G，刪了 NUTN台語/hubert/Qwen0.6B/bigvgan/whisper-small）。ext4 用量降到 ~14G。⚠️ **但 C 碟的 `ext4.vhdx`（~37G）原地壓縮無效** —— WSL2 sparse vhdx 已知坑，diskpart / Optimize-VHD / 填零全 ≈0（填零還危險：ext4 掛 1TB 虛擬盤會失控）。要真正還 C 碟空間，須 `wsl --export`→`--unregister`→`--import` **搬到 D 碟**（順帶重建成 ~14G 的乾淨 vhdx）。
 - **Docker Desktop**：本機有裝（`docker-desktop` WSL 發行版 + `docker_data.vhdx`，約佔 C 碟 8G），**爺爺專案完全沒用到**；有自動啟動的 `com.docker.service` watchdog，要清得先停服務+關自動啟動才不會補回。

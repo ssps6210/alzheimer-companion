@@ -58,6 +58,13 @@ def _load_talk_mode():
 DEFAULT_TALK_MODE = _load_talk_mode()   # 'hold'=按住說話 / 'auto'=自動連續對話（爺爺畫面預設；本機可覆蓋）
 TTS_CACHE_MAX = 64
 
+# ── 聲音同意閘門（防冒用）：設定克隆音色前，錄音本人須先唸出同意聲明 ─────────
+# 這句會被 whisper 轉出來、比對關鍵詞；由於同意句就在同一段錄音裡，說話者＝同意者，
+# 把「同意」牢牢綁在「這個聲音」上。CONSENT_REQUIRED=0 可關（進階／本機用）。
+CONSENT_REQUIRED = os.environ.get("CONSENT_REQUIRED", "1") != "0"
+CONSENT_PHRASE   = "我同意用我的聲音陪伴家人"
+CONSENT_KEYS     = ("同意", "陪伴")   # 兩個夠獨特的詞都出現才算通過（容忍 ASR 誤差、繁簡差異）
+
 # ── Config (borrow Open-LLM-VTuber's config-driven pluggable pattern) ─────────
 # All knobs live in conf.yaml; secrets (API key) stay in env vars. Falls back to
 # these DEFAULTS if conf.yaml or pyyaml is missing — behaviour is unchanged.
@@ -467,6 +474,7 @@ async def health():
             r.raise_for_status()
             d = r.json()
             return {"ok": True, "ref_loaded": d.get("ref_loaded"),
+                    "watermark": d.get("watermark"),
                     "sample_rate": d.get("sample_rate")}
         except Exception as e:
             return {"ok": False, "error": f"{e}（WSL2 的 cosyvoice_api 未啟動？Phase 0 屬正常）"}
@@ -577,10 +585,17 @@ async def setup_upload_voice(name: str = Form("family"), audio: UploadFile = Fil
 
 
 @app.post("/setup/set-voice")
-async def setup_set_voice(audio: UploadFile = File(...), ref_text: str = Form("")):
+async def setup_set_voice(audio: UploadFile = File(...), ref_text: str = Form(""),
+                          consent: str = Form("")):
     """使用者上傳一段參考音 → 設為 Qwen 的克隆音色。
     存 voices/active_reference.wav (+ 逐字稿 .txt)，再叫 Qwen 熱重載，不用重啟。
-    這是開源版讓「每個人塞自己想要的音色」的入口。"""
+    這是開源版讓「每個人塞自己想要的音色」的入口。
+
+    防冒用（同意閘門）：CONSENT_REQUIRED 時，錄音本人須在錄音裡先唸同意聲明，
+    且需勾選確認；同意證明存 voices/active_reference.consent.json。"""
+    if CONSENT_REQUIRED and not consent.strip():
+        raise HTTPException(status_code=400,
+            detail="請先勾選下方的同意聲明（確認你是本人或已取得本人同意），才能設定聲音。")
     vdir = os.path.join(SCRIPT_DIR, "voices")
     os.makedirs(vdir, exist_ok=True)
     raw = await audio.read()
@@ -614,6 +629,27 @@ async def setup_set_voice(audio: UploadFile = File(...), ref_text: str = Form(""
         rt = await run_in_threadpool(_tx)
     with open(os.path.splitext(ref_wav)[0] + ".txt", "w", encoding="utf-8") as f:
         f.write(rt)
+    # ── 同意閘門：錄音裡必須包含口說的同意聲明 ────────────────────────────
+    # 同意句就在同一段錄音裡 → 說話者＝同意者，把「同意」綁死在「這把聲音」上。
+    if CONSENT_REQUIRED:
+        said = (rt or "") + " " + (ref_text or "")
+        if not all(k in said for k in CONSENT_KEYS):
+            for p in (ref_wav, os.path.splitext(ref_wav)[0] + ".txt", up):
+                try: os.remove(p)
+                except Exception: pass
+            raise HTTPException(status_code=400,
+                detail=f"為了防止聲音被冒用：請在錄音的最開頭先清楚唸這句同意聲明，再自然說話——"
+                       f"「{CONSENT_PHRASE}」。沒聽到這句，聲音不會被設定。")
+        import hashlib, time
+        try:
+            digest = hashlib.sha256(open(ref_wav, "rb").read()).hexdigest()
+            rec = {"phrase": CONSENT_PHRASE, "spoken_in_voice": True,
+                   "affirmed": consent.strip(), "transcript": rt,
+                   "ref_sha256": digest, "ts": int(time.time())}
+            with open(os.path.join(vdir, "active_reference.consent.json"), "w", encoding="utf-8") as f:
+                json.dump(rec, f, ensure_ascii=False, indent=2)
+        except Exception:
+            pass
     # 叫 Qwen 熱重載新音色（不用重啟）
     reloaded = False
     try:
@@ -1135,11 +1171,20 @@ a.link{color:#26418f;font-weight:600;text-decoration:none}
 <div class="card">
   <h2>① 🎙 設定陪伴聲音（音色）</h2>
   <p class="hint"><b>第一次使用先做這個。</b>上傳一段<b>清楚、安靜、連續 10–30 秒</b>的人聲，長輩之後就會聽到「這個聲音」回應他。語氣一致比錄很長更重要（系統只取最好的約 24 秒）。支援 wav / mp3 / m4a。<br>逐字稿可<b>留空</b>——系統會自動辨識；填了更準。</p>
+  <div class="note" style="background:#fff7ed;color:#9a3412;margin-bottom:12px">
+    🛡️ <b>防止聲音被冒用</b>：錄音的<b>最開頭</b>，請本人先清楚唸這一句同意聲明，接著再自然說話——<br>
+    <b style="font-size:15px">「我同意用我的聲音陪伴家人」</b><br>
+    <span style="font-size:12px">同意句就在同一段錄音裡，代表「這個聲音的本人」確實同意。系統聽到才會設定。<br>另外，所有生成的語音都會打上聽不見的 AI 浮水印，可被偵測為合成聲——降低被拿去詐騙的價值。</span>
+  </div>
   <div class="field">
     <input type="file" id="voiceFile" accept="audio/*">
     <input type="text" id="voiceText" placeholder="（選填）這段錄音說了什麼" style="flex:1;min-width:200px">
     <button onclick="setVoice()" id="vbtn">設為陪伴聲音</button>
   </div>
+  <label style="display:flex;gap:8px;align-items:flex-start;margin-top:10px;font-size:13px;color:#3a4658;cursor:pointer">
+    <input type="checkbox" id="consentChk" style="margin-top:3px">
+    <span>我確認我是這個聲音的<b>本人</b>，或已取得本人同意，僅用於陪伴長輩。</span>
+  </label>
   <div id="voiceMsg" class="note" style="display:none"></div>
 </div>
 
@@ -1196,6 +1241,7 @@ async function loadStatus(){
       b(h.whisper&&h.whisper.loaded,'語音辨識')+
       b(h.mimo&&h.mimo.ok,'大腦')+
       b(h.cosyvoice&&h.cosyvoice.ok,'克隆聲音'+((h.cosyvoice&&h.cosyvoice.ok)?'':'（未啟用·用通用聲）'),true)+
+      (h.cosyvoice&&h.cosyvoice.ok?b(h.cosyvoice.watermark,'AI浮水印'+(h.cosyvoice.watermark?'':'（未啟用）'),true):'')+
       b(h.phrases>0,'固定句 '+h.phrases+' 句',true);
   }catch(e){ el.innerHTML='<span class="badge bad">✕ 無法連線到伺服器</span>'; }
 }
@@ -1212,16 +1258,18 @@ async function preview(){
 async function setVoice(){
   const f=document.getElementById('voiceFile').files[0];
   const txt=document.getElementById('voiceText').value.trim();
+  const consent=document.getElementById('consentChk').checked;
   const msg=document.getElementById('voiceMsg'); const btn=document.getElementById('vbtn');
   if(!f){ msg.style.display='block'; msg.textContent='請先選一個音檔'; return; }
+  if(!consent){ msg.style.display='block'; msg.innerHTML='請先勾選同意聲明（確認你是本人或已取得本人同意）。'; return; }
   btn.disabled=true; btn.textContent='處理中…（辨識+套用，約 10-30 秒）';
-  const fd=new FormData(); fd.append('audio',f); fd.append('ref_text',txt);
+  const fd=new FormData(); fd.append('audio',f); fd.append('ref_text',txt); fd.append('consent',consent?'1':'');
   try{
     const r=await (await fetch('/setup/set-voice',{method:'POST',body:fd})).json();
     msg.style.display='block';
     msg.innerHTML = r.ok
       ? '✅ 已設為陪伴聲音'+(r.reloaded?'（已即時套用）':'（Qwen 未在跑，下次啟動生效）')+'。<br>逐字稿：「'+((r.ref_text||'').slice(0,40)||'(空)')+'」<br>→ 到上面「試聽現在的聲音」聽聽看。'
-      : '失敗';
+      : ('⚠ '+(r.detail||'失敗'));
     loadStatus();
   }catch(e){ msg.style.display='block'; msg.textContent='失敗：'+e; }
   btn.disabled=false; btn.textContent='設為陪伴聲音';

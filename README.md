@@ -48,6 +48,16 @@
 
 > _No voice ships with the repo. Open `/setup`, upload a 10–30s clip, and it becomes the companion voice — instantly._
 
+## 🛡️ 同意與浮水印 · Consent & watermark
+
+聲音克隆是好工具，界線要先畫好。這個專案**預設**就守住兩件事：
+
+- **口說同意閘門**：設定某個聲音前，本人要在錄音的**最開頭**先唸一句同意聲明（「我同意用我的聲音陪伴家人」）＋勾選確認。同意句就在**同一段錄音**裡，代表「這把聲音的本人」確實同意；系統聽到才會設定。同意紀錄只留在**你自己的機器**。
+- **AI 浮水印**：每段克隆語音都打上聽不見的 [AudioSeal](https://github.com/facebookresearch/audioseal) 浮水印，可被偵測為合成聲——`python tools/detect_watermark.py <音檔>` 即可驗。即使音訊外流，也能被辨識為 AI 合成，降低被拿去詐騙的價值。
+- 只使用**你有權使用**的聲音：本人，或已取得本人同意的家人。
+
+> _Voice cloning is dual-use. By default this project requires **spoken consent** — recorded in the same clip that becomes the voice — and **watermarks every generated clip** with AudioSeal so output is detectable as AI-synthesized. Use only voices you're entitled to use._
+
 ## 🖥️ 配置需求 · Requirements
 
 跑這套的是**架設的電腦**（長輩只要一台有 Chrome 的平板）。**顯卡 VRAM 是關鍵。**
