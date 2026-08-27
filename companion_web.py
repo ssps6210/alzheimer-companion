@@ -491,7 +491,9 @@ async def health():
         status = "ok"
 
     return {"status": status, "whisper": wh, "mimo": mimo,
-            "cosyvoice": cosy, "edge_tts": edge, "phrases": len(PHRASES)}
+            "cosyvoice": cosy, "edge_tts": edge, "phrases": len(PHRASES),
+            "llm_key_set": bool(MIMO_API_KEY),      # 大腦金鑰有沒有填（不限 NVIDIA）
+            "llm_key_env": CFG["llm"]["api_key_env"]}   # 該填哪個環境變數名
 
 
 @app.post("/reload-phrases")
@@ -1165,6 +1167,7 @@ a.link{color:#26418f;font-weight:600;text-decoration:none}
 <div class="card">
   <h2>📊 系統狀態</h2>
   <div class="badges" id="status">檢查中…</div>
+  <div id="keyWarn"></div>
   <div style="margin-top:12px"><a class="link" href="/" target="_blank">→ 開啟爺爺的畫面（Companion）</a></div>
 </div>
 
@@ -1243,6 +1246,12 @@ async function loadStatus(){
       b(h.cosyvoice&&h.cosyvoice.ok,'克隆聲音'+((h.cosyvoice&&h.cosyvoice.ok)?'':'（未啟用·用通用聲）'),true)+
       (h.cosyvoice&&h.cosyvoice.ok?b(h.cosyvoice.watermark,'AI浮水印'+(h.cosyvoice.watermark?'':'（未啟用）'),true):'')+
       b(h.phrases>0,'固定句 '+h.phrases+' 句',true);
+    const kw=document.getElementById('keyWarn');
+    if(kw){
+      kw.innerHTML = (h.llm_key_set===false)
+        ? '<div class="note" style="background:#fee2e2;color:#991b1b;margin-top:10px">⚠ <b>尚未設定大腦（LLM）金鑰</b>：請到專案資料夾的 <b>.env</b> 填入 <b>'+(h.llm_key_env||'你的 API key')+'</b>，大腦才會回應。<br><span style="font-size:12px">預設用 NVIDIA Nemotron（<b>build.nvidia.com</b> 免費申請）；也可改用任何 OpenAI 相容的 LLM——改 <b>conf.yaml</b> 的 <code>llm.base_url / model / api_key_env</code> 即可。</span></div>'
+        : '';
+    }
   }catch(e){ el.innerHTML='<span class="badge bad">✕ 無法連線到伺服器</span>'; }
 }
 async function preview(){

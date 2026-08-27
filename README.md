@@ -60,18 +60,9 @@
 
 ## 🖥️ 配置需求 · Requirements
 
-跑這套的是**架設的電腦**（長輩只要一台有 Chrome 的平板）。**顯卡 VRAM 是關鍵。**
+在一台**架設的電腦**上跑（長輩只要一台有 Chrome 的平板）。**推薦一張 NVIDIA 顯卡**——語音又快又穩（作者用 RTX 4060 8GB）。**沒有顯卡也能用 CPU 版**：純 Windows、免 WSL，家人的聲音一樣克隆、完全本機，只是慢一點。系統 Windows 10 / 11。
 
-| | 最低（能跑） | 建議（穩） |
-|---|---|---|
-| **顯卡** | NVIDIA **8GB VRAM**（3060 / 4060 / 2080…） | NVIDIA **12GB+**（3060 12G / 4070 / 2080 Ti） |
-| **RAM** | 8 GB | 16 GB+ |
-| **硬碟** | 30 GB 可用 | 50 GB+ SSD |
-| **系統** | Windows 10 (2004+) / 11 ＋ WSL2 | Windows 11 ＋ WSL2 |
-
-> 8GB 實測可跑（作者用 RTX 4060 8GB）但偶爾會卡；12GB+ 明顯更穩。
->
-> 🖥️ **沒有 NVIDIA 顯卡?** 也能用 **CPU 版**：家人的聲音一樣是克隆的、而且**完全在你自己的電腦上**（連 WSL 都不用裝），代價是語音合成較慢（一句話數秒~十幾秒；常用話走固定句仍秒回）。見下方「無顯卡 CPU 版」。
+> _Recommended: an NVIDIA GPU for fast, smooth speech. No GPU? The CPU build works too — same cloned family voice, fully local, just slower._
 
 ## 🚀 安裝 · Install
 
