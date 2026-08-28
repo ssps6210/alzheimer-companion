@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 對話窗的暖色卡片背景（配合「笑臉阿公」圖示的奶油色） -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <solid android:color="#FFF6E9" />
+    <corners android:radius="24dp" />
+</shape>

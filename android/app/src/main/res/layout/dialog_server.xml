@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 「輸入電腦網址」對話窗：暖色卡片、大字、好按（配合笑臉阿公圖示） -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="@drawable/dialog_bg"
+    android:padding="28dp">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:text="🧓"
+        android:textSize="44sp" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:gravity="center"
+        android:text="連到你的電腦"
+        android:textColor="#5A4636"
+        android:textSize="21sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:gravity="center"
+        android:lineSpacingExtra="3dp"
+        android:text="輸入架設 companion 那台電腦的網址。\n開「一鍵啟動」時，視窗上會顯示。"
+        android:textColor="#8A7A66"
+        android:textSize="13sp" />
+
+    <EditText
+        android:id="@+id/urlInput"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="20dp"
+        android:background="@drawable/dialog_input_bg"
+        android:hint="http://192.168.1.104:8080/"
+        android:textColorHint="#C0B199"
+        android:inputType="textUri"
+        android:paddingHorizontal="16dp"
+        android:paddingVertical="14dp"
+        android:textColor="#5A4636"
+        android:textSize="16sp" />
+
+    <Button
+        android:id="@+id/connectBtn"
+        android:layout_width="match_parent"
+        android:layout_height="54dp"
+        android:layout_marginTop="18dp"
+        android:background="@drawable/dialog_btn_bg"
+        android:text="連線"
+        android:textColor="#FFFFFF"
+        android:textSize="17sp"
+        android:textStyle="bold"
+        android:stateListAnimator="@null" />
+
+</LinearLayout>

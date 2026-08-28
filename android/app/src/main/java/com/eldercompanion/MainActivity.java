@@ -6,7 +6,7 @@ import android.app.AlertDialog;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
-import android.text.InputType;
+import android.view.LayoutInflater;
 import android.view.View;
 import android.view.WindowManager;
 import android.webkit.PermissionRequest;
@@ -30,7 +30,6 @@ public class MainActivity extends Activity {
 
     private static final String PREFS = "companion";
     private static final String KEY_URL = "server_url";
-    private static final String HINT = "http://192.168.1.104:8080/";  // 只是輸入框的範例提示
 
     private WebView web;
 
@@ -85,27 +84,35 @@ public class MainActivity extends Activity {
 
     private String savedUrl() { return prefs().getString(KEY_URL, ""); }
 
-    /** 跳出輸入框，讓家人填/改「架設 companion 那台電腦」的網址，存起來並載入。 */
+    /** 跳出暖色對話窗，讓家人填/改「架設 companion 那台電腦」的網址，存起來並載入。 */
     private void showUrlDialog(String current) {
-        final EditText in = new EditText(this);
-        in.setInputType(InputType.TYPE_TEXT_VARIATION_URI);
-        in.setHint(HINT);
+        View view = LayoutInflater.from(this).inflate(R.layout.dialog_server, null);
+        final EditText in = view.findViewById(R.id.urlInput);
         in.setText(current.isEmpty() ? "http://" : current);
+        in.setSelection(in.getText().length());
 
-        new AlertDialog.Builder(this)
-                .setTitle("輸入電腦的伺服器網址")
-                .setMessage("在架設 companion 的電腦上，家人管理台會顯示網址。\n"
-                        + "同一個 WiFi：用電腦的區網 IP，例如 " + HINT + "\n"
-                        + "遠端：用 https 通道網址。")
-                .setView(in)
+        final AlertDialog dialog = new AlertDialog.Builder(this)
+                .setView(view)
                 .setCancelable(false)
-                .setPositiveButton("連線", (d, w) -> {
-                    String u = in.getText().toString().trim();
-                    if (!u.startsWith("http://") && !u.startsWith("https://")) u = "http://" + u;
-                    prefs().edit().putString(KEY_URL, u).apply();
-                    web.loadUrl(u);
-                })
-                .show();
+                .create();
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+        }
+
+        view.findViewById(R.id.connectBtn).setOnClickListener(b -> {
+            String u = in.getText().toString().trim();
+            if (u.isEmpty() || u.equals("http://") || u.equals("https://")) return;  // 沒填就先別關
+            if (!u.startsWith("http://") && !u.startsWith("https://")) u = "http://" + u;
+            prefs().edit().putString(KEY_URL, u).apply();
+            dialog.dismiss();
+            web.loadUrl(u);
+        });
+
+        dialog.show();
+        if (dialog.getWindow() != null) {   // 卡片寬度給舒服一點，不要頂滿螢幕
+            int w = (int) (getResources().getDisplayMetrics().widthPixels * 0.86);
+            dialog.getWindow().setLayout(w, WindowManager.LayoutParams.WRAP_CONTENT);
+        }
     }
 
     private void hideSystemBars() {

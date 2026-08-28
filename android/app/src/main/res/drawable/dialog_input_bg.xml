@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 網址輸入框：圓角、暖色細邊 -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <solid android:color="#FFFDF9" />
+    <stroke android:width="1.5dp" android:color="#E7C9A0" />
+    <corners android:radius="14dp" />
+</shape>
