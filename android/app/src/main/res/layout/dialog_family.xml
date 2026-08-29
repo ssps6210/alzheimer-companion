@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 「家人專用」選單：上傳老照片、改連線網址。長輩畫面上不會直接看到這個。 -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="@drawable/dialog_bg"
+    android:padding="28dp">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:text="👨‍👩‍👧"
+        android:textSize="40sp" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:gravity="center"
+        android:text="家人專用"
+        android:textColor="#5A4636"
+        android:textSize="20sp"
+        android:textStyle="bold" />
+
+    <Button
+        android:id="@+id/btnUploadPhotos"
+        android:layout_width="match_parent"
+        android:layout_height="54dp"
+        android:layout_marginTop="20dp"
+        android:background="@drawable/dialog_btn_bg"
+        android:text="📷 上傳爺爺的老照片"
+        android:textColor="#FFFFFF"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:stateListAnimator="@null" />
+
+    <Button
+        android:id="@+id/btnChangeUrl"
+        android:layout_width="match_parent"
+        android:layout_height="54dp"
+        android:layout_marginTop="12dp"
+        android:background="@drawable/dialog_btn_ghost_bg"
+        android:text="🔧 重新設定電腦網址"
+        android:textColor="#8A5A2B"
+        android:textSize="16sp"
+        android:stateListAnimator="@null" />
+
+    <Button
+        android:id="@+id/btnCloseFamily"
+        android:layout_width="match_parent"
+        android:layout_height="44dp"
+        android:layout_marginTop="10dp"
+        android:background="@android:color/transparent"
+        android:text="取消"
+        android:textColor="#B0977C"
+        android:textSize="14sp"
+        android:stateListAnimator="@null" />
+
+</LinearLayout>

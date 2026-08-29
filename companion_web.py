@@ -23,6 +23,7 @@ import socket
 import json
 import time
 import re
+import uuid
 import asyncio
 import urllib.parse
 import numpy as np
@@ -525,6 +526,38 @@ async def get_photo(fname: str):
              "png": "image/png", "webp": "image/webp"}.get(ext, "application/octet-stream")
     with open(p, "rb") as f:
         return Response(content=f.read(), media_type=media)
+
+
+PHOTO_EXTS = (".jpg", ".jpeg", ".png", ".webp")
+PHOTO_MAX_BYTES = 20 * 1024 * 1024   # 20MB 上限，避免傳錯檔把硬碟塞爆
+
+
+@app.post("/setup/upload-photo")
+async def setup_upload_photo(photo: UploadFile = File(...)):
+    """家人上傳爺爺的老照片（懷舊輪播用）。/setup 網頁跟 App 原生選圖都打這支，
+    後端邏輯共用一份。檔名前綴時間戳記，讓輪播順序約略照上傳先後（list_photos 會排序）。"""
+    os.makedirs(PHOTOS_DIR, exist_ok=True)
+    ext = (os.path.splitext(photo.filename or "")[1] or "").lower()
+    if ext not in PHOTO_EXTS:
+        raise HTTPException(status_code=400, detail="只支援 jpg / png / webp 圖片")
+    data = await photo.read()
+    if len(data) < 100:
+        raise HTTPException(status_code=400, detail="圖片是空的")
+    if len(data) > PHOTO_MAX_BYTES:
+        raise HTTPException(status_code=400, detail="圖片太大（上限 20MB）")
+    fname = f"{int(time.time())}_{uuid.uuid4().hex[:8]}{ext}"
+    with open(os.path.join(PHOTOS_DIR, fname), "wb") as f:
+        f.write(data)
+    return {"ok": True, "file": fname, "bytes": len(data)}
+
+
+@app.post("/setup/delete-photo")
+async def setup_delete_photo(fname: str = Form(...)):
+    """刪掉一張已上傳的老照片（傳錯張時，家人不用自己去翻資料夾）。"""
+    p = os.path.join(PHOTOS_DIR, os.path.basename(fname))
+    if os.path.isfile(p):
+        os.remove(p)
+    return {"ok": True}
 
 
 # ── 預設說話模式（家人在 Setup 台設；爺爺畫面本機可覆蓋） ──
@@ -1202,6 +1235,17 @@ a.link{color:#26418f;font-weight:600;text-decoration:none}
 </div>
 
 <div class="card">
+  <h2>③ 📷 爺爺的老照片 <span class="muted" id="photoCount"></span></h2>
+  <p class="hint">爺爺畫面沒在說話時，會慢慢輪播這些照片（懷舊療法，安撫情緒）。可一次選多張，jpg / png / webp，單張上限 20MB。</p>
+  <div class="field">
+    <input type="file" id="photoFiles" accept="image/*" multiple>
+    <button onclick="uploadPhotos()" id="photoBtn">上傳照片</button>
+  </div>
+  <div id="photoMsg" class="note" style="display:none"></div>
+  <div id="photoGrid" style="display:flex;flex-wrap:wrap;gap:10px;margin-top:14px"></div>
+</div>
+
+<div class="card">
   <h2>🔊 試聽現在的聲音</h2>
   <p class="hint">打一句話，聽聽爺爺會聽到什麼樣的聲音（開放對話用的克隆聲；克隆未啟用時是通用聲）。</p>
   <div class="field">
@@ -1315,6 +1359,44 @@ async function loadHistory(){
   }catch(e){ hb.textContent='載入失敗：'+e; }
 }
 async function loadMode(){ try{ const d=await (await fetch('/setup/talk-mode')).json(); paintModeBtns(d.talk_mode); }catch(e){} }
+async function loadPhotoGrid(){
+  const grid=document.getElementById('photoGrid');
+  try{
+    const urls=await (await fetch('/photos')).json();
+    document.getElementById('photoCount').textContent = urls.length? `（${urls.length} 張）` : '';
+    grid.innerHTML = urls.length ? urls.map(u=>`
+      <div style="position:relative;width:96px;height:96px">
+        <img src="${u}" style="width:100%;height:100%;object-fit:cover;border-radius:10px;border:1px solid #eef0f4">
+        <button class="sm ghost" onclick="deletePhoto('${decodeURIComponent(u.split('/').pop())}')" style="position:absolute;top:4px;right:4px;padding:1px 7px;font-size:12px;box-shadow:0 1px 3px rgba(20,30,60,.25)">✕</button>
+      </div>`).join('') : '<span class="muted">還沒有照片，爺爺畫面會顯示暖色占位。</span>';
+  }catch(e){ grid.innerHTML='<span class="muted">載入失敗</span>'; }
+}
+async function uploadPhotos(){
+  const files=document.getElementById('photoFiles').files;
+  const msg=document.getElementById('photoMsg'), btn=document.getElementById('photoBtn');
+  if(!files.length){ msg.style.display='block'; msg.textContent='請先選照片'; return; }
+  btn.disabled=true;
+  let ok=0, fail=0;
+  for(let i=0;i<files.length;i++){
+    btn.textContent = `上傳中…（${i+1}/${files.length}）`;
+    const fd=new FormData(); fd.append('photo', files[i]);
+    try{
+      const r=await (await fetch('/setup/upload-photo',{method:'POST',body:fd})).json();
+      if(r.ok) ok++; else fail++;
+    }catch(e){ fail++; }
+  }
+  msg.style.display='block';
+  msg.textContent = fail ? `完成：${ok} 張成功、${fail} 張失敗（格式需 jpg/png/webp，單張上限 20MB）` : `✅ ${ok} 張照片已上傳`;
+  document.getElementById('photoFiles').value='';
+  btn.disabled=false; btn.textContent='上傳照片';
+  loadPhotoGrid();
+}
+async function deletePhoto(fname){
+  if(!confirm('刪除這張照片？')) return;
+  const fd=new FormData(); fd.append('fname', fname);
+  try{ await fetch('/setup/delete-photo',{method:'POST',body:fd}); }catch(e){}
+  loadPhotoGrid();
+}
 function paintModeBtns(m){
   document.getElementById('modeHold').className = m==='hold'?'':'ghost';
   document.getElementById('modeAuto').className = m==='auto'?'':'ghost';
@@ -1325,7 +1407,7 @@ async function setMode(m){
     const d=await (await fetch('/setup/talk-mode',{method:'POST',body:fd})).json(); paintModeBtns(d.talk_mode);
   }catch(e){ alert('設定失敗：'+e); }
 }
-loadStatus(); loadPhrases(); loadHistory(); loadMode();
+loadStatus(); loadPhrases(); loadHistory(); loadMode(); loadPhotoGrid();
 </script>
 </body>
 </html>

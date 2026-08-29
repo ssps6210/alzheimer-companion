@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 次要按鈕：淺色、有邊框，跟主要的暖橘按鈕做區隔 -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_pressed="true">
+        <shape android:shape="rectangle">
+            <solid android:color="#F0E2CC" />
+            <stroke android:width="1.5dp" android:color="#E7C9A0" />
+            <corners android:radius="14dp" />
+        </shape>
+    </item>
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="#FFFDF9" />
+            <stroke android:width="1.5dp" android:color="#E7C9A0" />
+            <corners android:radius="14dp" />
+        </shape>
+    </item>
+</selector>
