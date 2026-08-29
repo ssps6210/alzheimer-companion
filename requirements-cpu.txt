@@ -11,6 +11,7 @@ edge-tts                # 通用聲 fallback
 requests
 numpy
 pyyaml
+zeroconf                # App「自動尋找電腦」用的 mDNS 廣播（沒裝也不影響其他功能）
 soundfile               # XTTS 輸出寫 wav
 
 # CPU 版語音克隆（XTTS-v2，Coqui 社群維護分支）＋ AI 浮水印

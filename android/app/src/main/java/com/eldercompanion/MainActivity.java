@@ -8,7 +8,10 @@ import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.net.Uri;
+import android.net.nsd.NsdManager;
+import android.net.nsd.NsdServiceInfo;
 import android.os.Bundle;
+import android.os.Handler;
 import android.provider.OpenableColumns;
 import android.view.Gravity;
 import android.view.LayoutInflater;
@@ -27,6 +30,8 @@ import android.widget.FrameLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import org.json.JSONObject;
+
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -38,17 +43,21 @@ import java.util.List;
 /**
  * 爺爺的小助手 · WebView 外殼 + 一點原生功能。
  * 長輩看到的畫面（按鈕、麥克風、對話）都是 companion 網頁，跑在 WebView 裡。
- * 但「家人專用」的事——例如上傳老照片——原生處理更順手：系統原生選圖、直接
- * 呼叫後端同一支 API，不用經過網頁那層。入口是螢幕角落一顆不顯眼的⚙。
+ * 但「家人專用」的事——上傳老照片、自動找電腦、查系統狀態——原生處理更順手：
+ * 系統原生選圖/NSD 探索，直接呼叫後端同一套 API，不用經過網頁那層。
+ * 入口是螢幕角落一顆不顯眼的⚙。
  *
  * 伺服器網址「不寫死」：首次開啟會請你輸入（記在手機裡），所以同一個 APK 每個家庭都能用。
- * 連不上時（打錯 / 電腦沒開）會自動再跳出來讓你重填。
+ * 連不上時（打錯 / 電腦沒開）會自動再跳出來讓你重填；同一個對話窗也會自動在區網找電腦
+ * （後端用 mDNS 廣播自己，見 companion_web.py 的 _advertise_mdns），找到了就自動填好。
  */
 public class MainActivity extends Activity {
 
     private static final String PREFS = "companion";
     private static final String KEY_URL = "server_url";
     private static final int REQ_PICK_PHOTOS = 1001;
+    private static final String SERVICE_TYPE = "_eldercompanion._tcp.";
+    private static final int DISCOVER_TIMEOUT_MS = 6000;
 
     private WebView web;
 
@@ -115,7 +124,7 @@ public class MainActivity extends Activity {
         setContentView(root);
 
         String url = savedUrl();
-        if (url.isEmpty()) showUrlDialog("");   // 首次開啟：請家人輸入電腦網址
+        if (url.isEmpty()) showUrlDialog("");   // 首次開啟：請家人輸入電腦網址（順便自動找）
         else web.loadUrl(url);
     }
 
@@ -123,10 +132,12 @@ public class MainActivity extends Activity {
 
     private String savedUrl() { return prefs().getString(KEY_URL, ""); }
 
-    /** 跳出暖色對話窗，讓家人填/改「架設 companion 那台電腦」的網址，存起來並載入。 */
+    /** 跳出暖色對話窗，讓家人填/改「架設 companion 那台電腦」的網址，存起來並載入。
+     *  一打開就順便在區網自動找一次電腦（後端有廣播的話），找到就自動填好，家人只要按連線。 */
     private void showUrlDialog(String current) {
         View view = LayoutInflater.from(this).inflate(R.layout.dialog_server, null);
         final EditText in = view.findViewById(R.id.urlInput);
+        final TextView discoverStatus = view.findViewById(R.id.discoverStatus);
         in.setText(current.isEmpty() ? "http://" : current);
         in.setSelection(in.getText().length());
 
@@ -146,15 +157,18 @@ public class MainActivity extends Activity {
             dialog.dismiss();
             web.loadUrl(u);
         });
+        view.findViewById(R.id.discoverBtn).setOnClickListener(b -> discoverBackend(discoverStatus, in));
 
         dialog.show();
         if (dialog.getWindow() != null) {   // 卡片寬度給舒服一點，不要頂滿螢幕
             int w = (int) (getResources().getDisplayMetrics().widthPixels * 0.86);
             dialog.getWindow().setLayout(w, WindowManager.LayoutParams.WRAP_CONTENT);
         }
+
+        discoverBackend(discoverStatus, in);   // 對話窗一開就自動找一次
     }
 
-    /** 「家人專用」選單：上傳老照片 / 改連線網址。從角落⚙進來。 */
+    /** 「家人專用」選單：上傳老照片 / 改連線網址 / 查系統狀態。從角落⚙進來。 */
     private void showFamilyMenu() {
         View view = LayoutInflater.from(this).inflate(R.layout.dialog_family, null);
         final AlertDialog dialog = new AlertDialog.Builder(this).setView(view).create();
@@ -164,6 +178,7 @@ public class MainActivity extends Activity {
 
         view.findViewById(R.id.btnUploadPhotos).setOnClickListener(b -> { dialog.dismiss(); pickPhotos(); });
         view.findViewById(R.id.btnChangeUrl).setOnClickListener(b -> { dialog.dismiss(); showUrlDialog(savedUrl()); });
+        view.findViewById(R.id.btnStatus).setOnClickListener(b -> { dialog.dismiss(); showSystemStatus(); });
         view.findViewById(R.id.btnCloseFamily).setOnClickListener(b -> dialog.dismiss());
 
         dialog.show();
@@ -171,6 +186,65 @@ public class MainActivity extends Activity {
             int w = (int) (getResources().getDisplayMetrics().widthPixels * 0.86);
             dialog.getWindow().setLayout(w, WindowManager.LayoutParams.WRAP_CONTENT);
         }
+    }
+
+    /** 在區網用 mDNS 找架設 companion 的電腦（後端 _advertise_mdns 廣播的服務）。
+     *  找到就把網址填進輸入框——但只在使用者還沒自己改過內容時才覆蓋，不打斷手動輸入。 */
+    private void discoverBackend(TextView statusView, EditText targetInput) {
+        NsdManager nsdManager = (NsdManager) getSystemService(NSD_SERVICE);
+        if (nsdManager == null) {
+            if (statusView != null) statusView.setText("這台裝置不支援自動尋找，請手動輸入");
+            return;
+        }
+        final String initialText = targetInput != null ? targetInput.getText().toString() : null;
+        final boolean[] done = {false};
+        final NsdManager.DiscoveryListener[] holder = new NsdManager.DiscoveryListener[1];
+
+        holder[0] = new NsdManager.DiscoveryListener() {
+            @Override public void onDiscoveryStarted(String regType) { }
+
+            @Override public void onServiceFound(NsdServiceInfo service) {
+                if (done[0]) return;
+                nsdManager.resolveService(service, new NsdManager.ResolveListener() {
+                    @Override public void onResolveFailed(NsdServiceInfo si, int errorCode) { }
+
+                    @Override public void onServiceResolved(NsdServiceInfo si) {
+                        if (done[0]) return;
+                        done[0] = true;
+                        final String url = "http://" + si.getHost().getHostAddress() + ":" + si.getPort() + "/";
+                        runOnUiThread(() -> {
+                            if (statusView != null) statusView.setText("✅ 找到電腦：" + url);
+                            if (targetInput != null && targetInput.getText().toString().equals(initialText)) {
+                                targetInput.setText(url);
+                                targetInput.setSelection(url.length());
+                            }
+                        });
+                        try { nsdManager.stopServiceDiscovery(holder[0]); } catch (Exception ignored) { }
+                    }
+                });
+            }
+
+            @Override public void onServiceLost(NsdServiceInfo service) { }
+            @Override public void onDiscoveryStopped(String serviceType) { }
+
+            @Override public void onStartDiscoveryFailed(String serviceType, int errorCode) {
+                if (statusView != null) runOnUiThread(() -> statusView.setText("自動尋找失敗，請手動輸入"));
+            }
+
+            @Override public void onStopDiscoveryFailed(String serviceType, int errorCode) { }
+        };
+
+        if (statusView != null) statusView.setText("🔍 正在同一個 WiFi 上找你的電腦…");
+        try {
+            nsdManager.discoverServices(SERVICE_TYPE, NsdManager.PROTOCOL_DNS_SD, holder[0]);
+        } catch (Exception e) {
+            if (statusView != null) statusView.setText("自動尋找失敗，請手動輸入");
+            return;
+        }
+        new Handler(getMainLooper()).postDelayed(() -> {
+            try { nsdManager.stopServiceDiscovery(holder[0]); } catch (Exception ignored) { }
+            if (!done[0] && statusView != null) statusView.setText("沒找到，可手動輸入或再按一次上面按鈕");
+        }, DISCOVER_TIMEOUT_MS);
     }
 
     /** 系統原生選圖（可多選），不需要額外的儲存權限（SAF 授權範圍僅限選中的檔案）。 */
@@ -215,7 +289,7 @@ public class MainActivity extends Activity {
         }
 
         final int total = uris.size();
-        final String endpoint = uploadUrl();
+        final String endpoint = joinUrl(savedUrl(), "setup/upload-photo");
         new Thread(() -> {
             int ok = 0, fail = 0;
             for (int i = 0; i < total; i++) {
@@ -223,7 +297,8 @@ public class MainActivity extends Activity {
                 runOnUiThread(() -> progressText.setText("上傳中…（" + idx + "/" + total + "）"));
                 Uri u = uris.get(i);
                 try {
-                    byte[] data = readAll(u);
+                    InputStream in = getContentResolver().openInputStream(u);
+                    byte[] data = readAll(in);
                     String name = resolveFileName(u);
                     String mime = getContentResolver().getType(u);
                     if (mime == null) mime = "image/jpeg";
@@ -243,14 +318,68 @@ public class MainActivity extends Activity {
         }).start();
     }
 
-    private String uploadUrl() {
-        String base = savedUrl();
-        if (!base.endsWith("/")) base += "/";
-        return base + "setup/upload-photo";
+    /** 家人選單「📊 查看系統狀態」：直接打後端 /health，原生秀出來，不用另開瀏覽器分頁。 */
+    private void showSystemStatus() {
+        View view = LayoutInflater.from(this).inflate(R.layout.dialog_status, null);
+        final TextView body = view.findViewById(R.id.statusBody);
+        final AlertDialog dialog = new AlertDialog.Builder(this).setView(view).create();
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+        }
+        view.findViewById(R.id.btnCloseStatus).setOnClickListener(b -> dialog.dismiss());
+        dialog.show();
+        if (dialog.getWindow() != null) {
+            int w = (int) (getResources().getDisplayMetrics().widthPixels * 0.86);
+            dialog.getWindow().setLayout(w, WindowManager.LayoutParams.WRAP_CONTENT);
+        }
+
+        final String base = savedUrl();
+        if (base.isEmpty()) { body.setText("還沒設定電腦網址"); return; }
+        final String healthUrl = joinUrl(base, "health");
+        new Thread(() -> {
+            String text;
+            HttpURLConnection conn = null;
+            try {
+                conn = (HttpURLConnection) new URL(healthUrl).openConnection();
+                conn.setConnectTimeout(6000);
+                conn.setReadTimeout(8000);
+                byte[] data = readAll(conn.getInputStream());
+                JSONObject j = new JSONObject(new String(data, "UTF-8"));
+                JSONObject wh = j.optJSONObject("whisper");
+                JSONObject mimo = j.optJSONObject("mimo");
+                JSONObject cosy = j.optJSONObject("cosyvoice");
+                boolean cosyOk = cosy != null && cosy.optBoolean("ok");
+                int phrases = j.optInt("phrases", 0);
+
+                StringBuilder sb = new StringBuilder();
+                sb.append(badge("語音辨識", wh != null && wh.optBoolean("loaded")));
+                sb.append(badge("大腦", mimo != null && mimo.optBoolean("ok")));
+                sb.append(badge("克隆聲音", cosyOk));
+                if (cosyOk) sb.append(badge("AI 浮水印", cosy.optBoolean("watermark")));
+                sb.append(badge("固定句 " + phrases + " 句", phrases > 0));
+                if (!j.optBoolean("llm_key_set", true)) {
+                    sb.append("\n⚠ 尚未設定大腦金鑰（.env 的 ").append(j.optString("llm_key_env", "")).append("）");
+                }
+                text = sb.toString();
+            } catch (Exception e) {
+                text = "連不到電腦（" + base + "）\n請確認電腦有開機、companion 有在跑、跟平板同一個網路。";
+            } finally {
+                if (conn != null) conn.disconnect();
+            }
+            final String finalText = text;
+            runOnUiThread(() -> body.setText(finalText));
+        }).start();
     }
 
-    private byte[] readAll(Uri uri) throws Exception {
-        InputStream in = getContentResolver().openInputStream(uri);
+    private String badge(String label, boolean ok) { return (ok ? "✅ " : "❌ ") + label + "\n"; }
+
+    /** base（可能沒有結尾斜線）+ path → 完整網址。所有原生呼叫共用，避免各處各拼一次。 */
+    private String joinUrl(String base, String path) {
+        if (!base.endsWith("/")) base += "/";
+        return base + path;
+    }
+
+    private byte[] readAll(InputStream in) throws Exception {
         ByteArrayOutputStream bos = new ByteArrayOutputStream();
         byte[] buf = new byte[8192];
         int n;

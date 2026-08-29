@@ -10,3 +10,4 @@ edge-tts              # 備援 TTS（克隆聲失敗時的通用聲）
 requests
 numpy
 pyyaml                # 讀 conf.yaml（沒有的話用內建預設）
+zeroconf               # App「自動尋找電腦」用的 mDNS 廣播（沒裝也不影響其他功能，只是要手動輸入網址）

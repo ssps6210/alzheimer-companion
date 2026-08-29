@@ -43,6 +43,13 @@ try:
 except ImportError:
     edge_tts = None
 
+# App「自動尋找電腦」用：在區網廣播 mDNS，讓 Android NsdManager 找得到，免打 IP。
+# 裝不了就靜靜跳過——App 會自動退回手動輸入網址，不影響其他功能。
+try:
+    from zeroconf import ServiceInfo, Zeroconf
+except ImportError:
+    Zeroconf = None
+
 WEEKDAYS_ZH  = ["星期一","星期二","星期三","星期四","星期五","星期六","星期日"]
 SCRIPT_DIR   = os.path.dirname(os.path.abspath(__file__))
 PHRASES_DIR  = os.path.join(SCRIPT_DIR, "phrases")  # 固定句音檔 + phrases.json
@@ -65,6 +72,8 @@ TTS_CACHE_MAX = 64
 CONSENT_REQUIRED = os.environ.get("CONSENT_REQUIRED", "1") != "0"
 CONSENT_PHRASE   = "我同意用我的聲音陪伴家人"
 CONSENT_KEYS     = ("同意", "陪伴")   # 兩個夠獨特的詞都出現才算通過（容忍 ASR 誤差、繁簡差異）
+
+PORT = int(os.environ.get("COMPANION_PORT", 8080))
 
 # ── Config (borrow Open-LLM-VTuber's config-driven pluggable pattern) ─────────
 # All knobs live in conf.yaml; secrets (API key) stay in env vars. Falls back to
@@ -422,9 +431,36 @@ async def daily_summary_loop():
             print(f"每日摘要失敗（忽略）：{e}")
 
 
+def _advertise_mdns():
+    """在區網廣播這台電腦，讓 App 的「自動尋找電腦」不用手打 IP。
+    純加分項：裝不了 zeroconf、找不到區網 IP，都只印一行提示、不影響其他任何功能。"""
+    if Zeroconf is None:
+        print("mDNS 廣播未啟用（缺 zeroconf，App 自動尋找功能會找不到；pip install zeroconf 可補上）")
+        return None
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))   # 不會真的送出封包，只是借系統路由表問「我對外的 IP 是哪個」
+        ip = s.getsockname()[0]
+        s.close()
+        info = ServiceInfo(
+            "_eldercompanion._tcp.local.",
+            "陪伴系統._eldercompanion._tcp.local.",
+            addresses=[socket.inet_aton(ip)], port=PORT,
+            properties={"path": "/"},
+        )
+        zc = Zeroconf()
+        zc.register_service(info)
+        print(f"mDNS 廣播中：App「自動尋找電腦」找得到這台（{ip}:{PORT}）")
+        return zc
+    except Exception as e:
+        print(f"mDNS 廣播失敗（不影響其他功能）：{e}")
+        return None
+
+
 @app.on_event("startup")
 async def startup():
     global whisper
+    _advertise_mdns()
     if not MIMO_API_KEY:
         print(f"⚠ 未設定 {CFG['llm']['api_key_env']} 環境變數，LLM 會無法回應！")
     if not (TELEGRAM_TOKEN and TELEGRAM_CHAT):
@@ -1428,4 +1464,4 @@ if __name__ == "__main__":
     print("  確保平板和電腦在同一 WiFi")
     print("=" * 50)
 
-    uvicorn.run(app, host="0.0.0.0", port=8080, log_level="warning")
+    uvicorn.run(app, host="0.0.0.0", port=PORT, log_level="warning")
