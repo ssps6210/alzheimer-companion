@@ -1238,6 +1238,11 @@ a.link{color:#26418f;font-weight:600;text-decoration:none}
   <div class="badges" id="status">檢查中…</div>
   <div id="keyWarn"></div>
   <div style="margin-top:12px"><a class="link" href="/" target="_blank">→ 開啟爺爺的畫面（Companion）</a></div>
+  <div class="field" style="margin-top:12px">
+    <input type="text" id="thisUrl" readonly style="flex:1;min-width:200px;background:#f7f9fc" value="讀取中…">
+    <button class="ghost sm" onclick="copyThisUrl()" id="copyUrlBtn">📋 複製網址</button>
+  </div>
+  <p class="hint" style="margin:6px 0 0">在平板的 App 開「輸入電腦網址」，按貼上就好，不用手打。</p>
 </div>
 
 <div class="card">
@@ -1314,6 +1319,17 @@ function play(url){
   if(url.startsWith('blob:'))lastBlobUrl=url;
   player.src=url; player.play().catch(()=>{});
 }
+
+function copyThisUrl(){
+  const el=document.getElementById('thisUrl'), btn=document.getElementById('copyUrlBtn');
+  const done=()=>{ const old=btn.textContent; btn.textContent='✅ 已複製'; setTimeout(()=>btn.textContent=old,1500); };
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(el.value).then(done).catch(()=>{ el.select(); document.execCommand('copy'); done(); });
+  } else {   // 舊瀏覽器 / 非 https 沒有 clipboard API 時的退路
+    el.select(); document.execCommand('copy'); done();
+  }
+}
+document.getElementById('thisUrl').value = location.origin + '/';
 
 async function loadStatus(){
   const el=document.getElementById('status');

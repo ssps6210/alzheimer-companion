@@ -3,6 +3,7 @@ package com.eldercompanion;
 import android.Manifest;
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.content.ClipboardManager;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
@@ -158,6 +159,17 @@ public class MainActivity extends Activity {
             web.loadUrl(u);
         });
         view.findViewById(R.id.discoverBtn).setOnClickListener(b -> discoverBackend(discoverStatus, in));
+        view.findViewById(R.id.pasteBtn).setOnClickListener(b -> {
+            ClipboardManager cm = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
+            CharSequence text = (cm != null && cm.hasPrimaryClip() && cm.getPrimaryClip().getItemCount() > 0)
+                    ? cm.getPrimaryClip().getItemAt(0).coerceToText(this) : null;
+            if (text == null || text.toString().trim().isEmpty()) {
+                Toast.makeText(this, "剪貼簿是空的——先去電腦上的家人管理台按「複製網址」", Toast.LENGTH_LONG).show();
+                return;
+            }
+            in.setText(text.toString().trim());
+            in.setSelection(in.getText().length());
+        });
 
         dialog.show();
         if (dialog.getWindow() != null) {   // 卡片寬度給舒服一點，不要頂滿螢幕
