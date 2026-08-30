@@ -273,7 +273,6 @@ public class MainActivity extends Activity {
             return;
         }
         IntentIntegrator integrator = new IntentIntegrator(this);
-        integrator.setDesiredBarcodeFormats(IntentIntegrator.QR_CODE_TYPES);
         integrator.setPrompt("對準電腦「家人管理台」上的 QR code");
         integrator.setBeepEnabled(false);
         integrator.setOrientationLocked(true);
