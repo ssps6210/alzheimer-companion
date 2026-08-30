@@ -90,6 +90,17 @@
         android:stateListAnimator="@null" />
 
     <Button
+        android:id="@+id/scanBtn"
+        android:layout_width="match_parent"
+        android:layout_height="42dp"
+        android:layout_marginTop="8dp"
+        android:background="@drawable/dialog_btn_ghost_bg"
+        android:text="📷 掃碼連線"
+        android:textColor="#8A5A2B"
+        android:textSize="13sp"
+        android:stateListAnimator="@null" />
+
+    <Button
         android:id="@+id/connectBtn"
         android:layout_width="match_parent"
         android:layout_height="54dp"

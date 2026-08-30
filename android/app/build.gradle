@@ -10,8 +10,8 @@ android {
         applicationId 'com.eldercompanion'
         minSdk 24            // Android 7.0 以上（涵蓋舊平板）
         targetSdk 34
-        versionCode 5
-        versionName '1.4'
+        versionCode 6
+        versionName '1.5'
     }
 
     buildTypes {
@@ -24,4 +24,8 @@ android {
         targetCompatibility JavaVersion.VERSION_17
     }
 }
-// 純用 Android framework（WebView），不需要額外依賴。
+// 大部分功能純用 Android framework，不需要額外依賴。
+// 「📷 掃碼連線」是唯一的例外：QR 掃描沒有內建 API，用業界標準、免 Play 服務的 ZXing embedded。
+dependencies {
+    implementation 'com.journeyapps:zxing-android-embedded:4.3.0'
+}

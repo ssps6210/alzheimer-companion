@@ -31,6 +31,9 @@ import android.widget.FrameLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.google.zxing.integration.android.IntentIntegrator;
+import com.google.zxing.integration.android.IntentResult;
+
 import org.json.JSONObject;
 
 import java.io.ByteArrayOutputStream;
@@ -57,10 +60,12 @@ public class MainActivity extends Activity {
     private static final String PREFS = "companion";
     private static final String KEY_URL = "server_url";
     private static final int REQ_PICK_PHOTOS = 1001;
+    private static final int REQ_CAMERA_PERM = 2001;
     private static final String SERVICE_TYPE = "_eldercompanion._tcp.";
     private static final int DISCOVER_TIMEOUT_MS = 6000;
 
     private WebView web;
+    private EditText activeUrlInput;   // 目前開著的網址對話窗的輸入框；掃碼結果要填回這裡（onActivityResult 是另一個方法，構不到 showUrlDialog 的區域變數）
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -141,6 +146,7 @@ public class MainActivity extends Activity {
         final TextView discoverStatus = view.findViewById(R.id.discoverStatus);
         in.setText(current.isEmpty() ? "http://" : current);
         in.setSelection(in.getText().length());
+        activeUrlInput = in;
 
         final AlertDialog dialog = new AlertDialog.Builder(this)
                 .setView(view)
@@ -170,6 +176,7 @@ public class MainActivity extends Activity {
             in.setText(text.toString().trim());
             in.setSelection(in.getText().length());
         });
+        view.findViewById(R.id.scanBtn).setOnClickListener(b -> startQrScan());
 
         dialog.show();
         if (dialog.getWindow() != null) {   // 卡片寬度給舒服一點，不要頂滿螢幕
@@ -259,6 +266,31 @@ public class MainActivity extends Activity {
         }, DISCOVER_TIMEOUT_MS);
     }
 
+    /** 「📷 掃碼連線」：掃 /setup 頁上的 QR，免打字。第一次用才跳相機權限。 */
+    private void startQrScan() {
+        if (checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[]{Manifest.permission.CAMERA}, REQ_CAMERA_PERM);
+            return;
+        }
+        IntentIntegrator integrator = new IntentIntegrator(this);
+        integrator.setDesiredBarcodeFormats(IntentIntegrator.QR_CODE_TYPES);
+        integrator.setPrompt("對準電腦「家人管理台」上的 QR code");
+        integrator.setBeepEnabled(false);
+        integrator.setOrientationLocked(true);
+        integrator.initiateScan();
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode != REQ_CAMERA_PERM) return;
+        if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+            startQrScan();
+        } else {
+            Toast.makeText(this, "沒有相機權限，無法掃碼——可用「📋 貼上」或手動輸入", Toast.LENGTH_LONG).show();
+        }
+    }
+
     /** 系統原生選圖（可多選），不需要額外的儲存權限（SAF 授權範圍僅限選中的檔案）。 */
     private void pickPhotos() {
         Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
@@ -275,6 +307,17 @@ public class MainActivity extends Activity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
+
+        // 先看是不是掃碼結果（ZXing 用自己的 request code；不是它的話 parseActivityResult 回 null）
+        IntentResult scan = IntentIntegrator.parseActivityResult(requestCode, resultCode, data);
+        if (scan != null) {
+            if (scan.getContents() != null && activeUrlInput != null) {
+                activeUrlInput.setText(scan.getContents().trim());
+                activeUrlInput.setSelection(activeUrlInput.getText().length());
+            }
+            return;
+        }
+
         if (requestCode != REQ_PICK_PHOTOS || resultCode != RESULT_OK || data == null) return;
         List<Uri> uris = new ArrayList<>();
         if (data.getClipData() != null) {

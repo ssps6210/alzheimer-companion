@@ -20,6 +20,7 @@ if os.path.exists(_env_path):
                 os.environ[_k.strip()] = _v.strip()
 
 import socket
+import io
 import json
 import time
 import re
@@ -49,6 +50,13 @@ try:
     from zeroconf import ServiceInfo, Zeroconf
 except ImportError:
     Zeroconf = None
+
+# /setup 頁的 QR code（App 掃碼連線用）。裝不了就這支端點回 501，頁面上退回純文字網址+複製按鈕。
+try:
+    import qrcode
+    import qrcode.image.svg
+except ImportError:
+    qrcode = None
 
 WEEKDAYS_ZH  = ["星期一","星期二","星期三","星期四","星期五","星期六","星期日"]
 SCRIPT_DIR   = os.path.dirname(os.path.abspath(__file__))
@@ -600,6 +608,19 @@ async def setup_delete_photo(fname: str = Form(...)):
 @app.get("/setup/talk-mode")
 async def get_talk_mode():
     return {"talk_mode": DEFAULT_TALK_MODE}
+
+
+@app.get("/setup/qr")
+async def setup_qr(request: Request):
+    """這台電腦連線網址的 QR code——App 的「📷 掃碼連線」對著螢幕掃這個就好，不用打字。
+    用 request.base_url，家人在哪個網址開 /setup，QR 就編碼那個網址（同區網用 IP，通道用通道網址）。"""
+    if qrcode is None:
+        raise HTTPException(status_code=501, detail="QR 功能未啟用（伺服器缺 qrcode 套件，可 pip install qrcode）")
+    img = qrcode.make(str(request.base_url), image_factory=qrcode.image.svg.SvgImage, box_size=8)
+    buf = io.BytesIO()
+    img.save(buf)
+    buf.seek(0)
+    return Response(content=buf.read(), media_type="image/svg+xml")
 
 
 @app.post("/setup/talk-mode")
@@ -1242,7 +1263,13 @@ a.link{color:#26418f;font-weight:600;text-decoration:none}
     <input type="text" id="thisUrl" readonly style="flex:1;min-width:200px;background:#f7f9fc" value="讀取中…">
     <button class="ghost sm" onclick="copyThisUrl()" id="copyUrlBtn">📋 複製網址</button>
   </div>
-  <p class="hint" style="margin:6px 0 0">在平板的 App 開「輸入電腦網址」，按貼上就好，不用手打。</p>
+  <p class="hint" style="margin:6px 0 0">在平板的 App 開「輸入電腦網址」，按貼上、或用「📷 掃碼連線」掃下面這個 QR。</p>
+  <div style="margin-top:10px;text-align:center">
+    <img src="/setup/qr" alt="QR code" width="150" height="150"
+         style="border-radius:10px;background:#fff;padding:6px;box-shadow:0 1px 3px rgba(20,30,60,.12)"
+         onerror="this.style.display='none';document.getElementById('qrFallback').style.display='block'">
+    <p id="qrFallback" class="muted" style="display:none">QR 功能未啟用（伺服器缺 qrcode 套件），用上面「複製網址」就好</p>
+  </div>
 </div>
 
 <div class="card">

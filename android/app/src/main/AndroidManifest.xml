@@ -6,7 +6,10 @@
     <!-- 「自動尋找電腦」(mDNS) 用；一般權限，不會跳權限視窗，只是讓多播訊號不被系統省電機制擋掉 -->
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />
+    <!-- 「📷 掃碼連線」用；只在家人主動按下時才會跳權限請求 -->
+    <uses-permission android:name="android.permission.CAMERA" />
     <uses-feature android:name="android.hardware.microphone" android:required="false" />
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
 
     <application
         android:allowBackup="true"
