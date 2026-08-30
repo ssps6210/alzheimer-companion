@@ -22,6 +22,7 @@ if os.path.exists(_env_path):
 import socket
 import io
 import json
+import threading
 import time
 import re
 import uuid
@@ -468,7 +469,9 @@ def _advertise_mdns():
 @app.on_event("startup")
 async def startup():
     global whisper
-    _advertise_mdns()
+    # 背景執行緒跑，不 await：zeroconf 在複雜網路（VPN/虛擬網卡）下可能卡住甚至掛住，
+    # 這是加分項，絕不能拖累核心服務（Whisper/大腦/克隆聲）的啟動——daemon=True 讓它卡死也不擋程式關閉。
+    threading.Thread(target=_advertise_mdns, daemon=True).start()
     if not MIMO_API_KEY:
         print(f"⚠ 未設定 {CFG['llm']['api_key_env']} 環境變數，LLM 會無法回應！")
     if not (TELEGRAM_TOKEN and TELEGRAM_CHAT):
