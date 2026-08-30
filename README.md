@@ -6,11 +6,15 @@
 </p>
 
 > **這個專案的起點很私人。**
-> 我阿公（閩南／台灣話的「爺爺」）住院兩年了，有時候還會卡痰，很辛苦；我住得很遠，每次回去看他都忍不住哭。
-> 我沒辦法時時刻刻陪著他——**但我可以把「家人的聲音」留在他身邊。** 所以有了這個。
-> 願它在你不在的時候，替你陪著那個正在慢慢忘記的人。
+> 我阿公（閩南／台灣話的「爺爺」）失智快三年了，常常認不出我——把我認成叔叔，或以為我還是讀國小的孫子，問我「這次考試考得怎麼樣」。他還住院兩年了，有時候會卡痰，很辛苦。
 >
-> _My grandfather has been in hospital for two years. I live far away, and every visit, I cry. I can't always be there — but I can leave the voice of family by his side._
+> 有一天，我在樓下買了一盒**麥香奶茶**，叼在嘴裡、咬著吸管走進病房，像我小時候那樣。他愣了一下，突然笑了：「你怎麼在這裡？有沒有用功讀書？有沒有吃飽？」——他認出我了。那一刻我又開心，又難過。
+>
+> 原來讓他找回我的，不是我說了幾次「我是你孫子」，而是一個他熟悉的、屬於過去的線索。我住得很遠，沒辦法時時刻刻陪著他——**但我可以把「熟悉的聲音」留在他身邊。** 所以有了這個。
+>
+> 記憶會消失，但愛可以換一種方式留下來。
+>
+> _My grandfather has had Alzheimer's for almost three years. He often doesn't recognize me — until, one day, I walked in sipping a childhood milk tea, the straw still in my mouth like when I was small. He paused, then smiled: "Hey — are you studying hard? Have you eaten?" He knew me again. What brought him back wasn't me saying "I'm your grandson" — it was something familiar. I live far away and can't always be there. But I can leave a familiar voice by his side. Memory fades. Love can stay, in another form._
 
 <p align="center">
   <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-green.svg"></a>
