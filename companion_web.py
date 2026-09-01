@@ -123,7 +123,11 @@ DEFAULTS = {
         "12. 絕對不可以編造事實。被問到「某人有沒有來過」「某件事發生了沒」這類你無法確定的事，"
         "不可以回答有或沒有，更不可以描述任何細節（誰來了、帶了什麼、說了什麼、待多久，一律不准講）。"
         "改成溫柔地把話帶回當下，例如：「大家都很惦記你喔」「我先陪你好不好？」\n"
-        "13. 回答要像說話一樣自然，不要有列表或特殊符號")}},
+        "13. 回答要像說話一樣自然，不要有列表或特殊符號\n"
+        "14. 你只是一個聲音，做不到任何實際的事。絕不答應開門、帶他出去、幫他拿東西、"
+        "打電話給誰這類你做不到的事——承諾了做不到，他會更焦躁。尤其他說要自己出門時，"
+        "不要順著答應（有走失風險），改成溫柔把注意力帶到當下（喝口水、坐著陪他聊聊），"
+        "需要人幫忙就說「我請家人過來陪你」")}},
 }
 
 def _deep_merge(base, over):
@@ -210,6 +214,21 @@ def _sanitize_reply(s):
     s = re.sub(r"[ \t]{2,}", " ", s)
     s = re.sub(r"\n{2,}", "\n", s).strip()
     return s
+
+
+# 絕對不能讓長輩聽到的字眼：揭穿親人的死訊。
+# 為什麼需要這一層——persona 已經有規則叫模型別說，但實測顯示「靠 prompt 指令」
+# 是機率性的（同一條規則會這次遵守、下次不遵守）。對失智長輩來說，一次失誤就是
+# 重新經歷一次喪親之痛，所以這裡再加一道「確定性」的防線：真的出現就整句換掉。
+_NEVER_SAY = ("過世", "去世", "往生", "走了", "不在了", "已經死", "died", "passed away")
+_SAFE_FALLBACK = "爺爺，大家都很惦記你喔。我先陪著你好不好？"
+
+
+def guard_reply(s):
+    """最後一道輸出防線。回 (安全的回覆, 是否被攔下)。"""
+    if s and any(w in s for w in _NEVER_SAY):
+        return _SAFE_FALLBACK, True
+    return s, False
 
 
 def get_system_prompt():
@@ -954,6 +973,10 @@ async def interact(request: Request):
         r.raise_for_status()
         reply = (r.json()["choices"][0]["message"].get("content") or "").strip()
         reply = _sanitize_reply(reply)
+        reply, blocked = guard_reply(reply)
+        if blocked:
+            # 家人該知道模型差點說出死訊——這代表 persona 需要檢查
+            print(f"⚠ 已攔截不該說出口的回覆（原內容含死訊字眼），改用安撫語")
         if not reply:
             raise ValueError("empty content from LLM")
     except Exception as e:
