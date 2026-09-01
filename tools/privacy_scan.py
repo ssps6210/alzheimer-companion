@@ -23,6 +23,7 @@ FORBIDDEN_PATTERNS = [
     (r"father_reference\.", "父親參考音／逐字稿"),
     (r"^reference_.*\.(wav|txt)$", "參考音／逐字稿"),
     (r"memory\.json$", "對話記憶（長輩的私人對話）"),
+    (r"patterns\.json$", "常說的話統計（長輩說過的話）"),
     (r"\.consent\.json$", "同意證明（含音檔雜湊）"),
     (r"^conf\.yaml$", "本地設定（可能含個人化 persona）"),
     (r"^ui_state\.json$", "本機執行期狀態"),

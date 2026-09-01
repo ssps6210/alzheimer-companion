@@ -387,6 +387,72 @@ def save_memory():
         print(f"記憶儲存失敗（忽略）：{e}")
 
 
+# ── 「最近常說的話」：幫家人看見長輩在意什麼 ──────────────────────────
+# 刻意的界線：這是陪伴觀察，不是醫療判讀，也不是行為監控。呈現方式一律是
+# 「他最近常提到什麼」，不做退化程度評分、不下任何健康結論——那是醫師的事。
+# 為什麼要另外存一份：history 只留最近 10 則、其餘會被摺疊進摘要，算不出趨勢。
+PATTERNS_FILE = os.path.join(SCRIPT_DIR, "patterns.json")
+PATTERN_KEEP_DAYS = 14      # 只留兩週，看得出近況又不會無限累積
+PATTERN_MAX_GROUPS = 200    # 上限，避免檔案無限長大
+_SIMILAR_ENOUGH = 0.65      # 「我要回家」「我想回家了」要能歸成同一件事（實測 0.667）
+patterns = []               # [{"key":str, "times":[unix_ts,...]}]
+
+
+def _norm(s):
+    """去掉標點與空白，讓「現在幾點？」和「現在幾點」算同一句。"""
+    return re.sub(r"[\s，。？！、,.?!~…；;：:「」『』（）()]", "", s or "")
+
+
+def load_patterns():
+    global patterns
+    try:
+        if os.path.exists(PATTERNS_FILE):
+            patterns = json.load(open(PATTERNS_FILE, encoding="utf-8")).get("groups", [])
+    except Exception as e:
+        print(f"常說的話載入失敗（忽略）：{e}")
+        patterns = []
+
+
+def save_patterns():
+    try:
+        with open(PATTERNS_FILE, "w", encoding="utf-8") as f:
+            json.dump({"groups": patterns}, f, ensure_ascii=False)
+    except Exception as e:
+        print(f"常說的話儲存失敗（忽略）：{e}")
+
+
+def track_utterance(text, now=None):
+    """記一次長輩說的話，歸到相近的group。失敗一律吞掉——這是附加功能，不能影響對話。"""
+    try:
+        import difflib
+        key = _norm(text)
+        if len(key) < 2:
+            return
+        ts = int(now or time.time())
+        cutoff = ts - PATTERN_KEEP_DAYS * 86400
+
+        best, best_ratio = None, 0.0
+        for g in patterns:
+            r = difflib.SequenceMatcher(None, key, g["key"]).ratio()
+            if r > best_ratio:
+                best, best_ratio = g, r
+        if best is not None and best_ratio >= _SIMILAR_ENOUGH:
+            best["times"].append(ts)
+        else:
+            patterns.append({"key": key, "times": [ts]})
+
+        # 汰舊：丟掉兩週前的紀錄，整組都空了就移除
+        for g in patterns:
+            g["times"] = [t for t in g["times"] if t >= cutoff]
+        patterns[:] = [g for g in patterns if g["times"]]
+        if len(patterns) > PATTERN_MAX_GROUPS:      # 留最常出現的
+            patterns.sort(key=lambda g: len(g["times"]), reverse=True)
+            del patterns[PATTERN_MAX_GROUPS:]
+        save_patterns()
+    except Exception as e:
+        print(f"常說的話記錄失敗（忽略）：{e}")
+
+
 def _remember(user_text, reply_text):
     """Append a turn, persist it, and fold older turns into the summary when long."""
     history.append({"role": "user", "content": user_text})
@@ -544,6 +610,7 @@ async def startup():
         print("（未設定 Telegram，家人通知/每日摘要停用）")
     load_phrases()
     load_memory()
+    load_patterns()
     _fire_bg(daily_summary_loop())
     print("載入 Whisper...")
     whisper = WhisperModel(WHISPER_SIZE, device=WHISPER_DEVICE, compute_type=WHISPER_CTYPE)
@@ -896,6 +963,35 @@ async def setup_tts_preview(text: str = Form(...)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.get("/setup/patterns")
+async def setup_patterns():
+    """「最近常說的話」：家人看得到爺爺這陣子在意什麼、哪個時段最需要陪伴。
+
+    刻意只回原始次數與時段，不做任何評分或健康判讀——那是醫師的專業，不是這個
+    工具該下的結論。家人自己看到「他這兩天一直問要回家」，比任何分數都有用。
+    """
+    now = int(time.time())
+    day, week = now - 86400, now - 7 * 86400
+    items = []
+    for g in patterns:
+        today = sum(1 for t in g["times"] if t >= day)
+        wk = sum(1 for t in g["times"] if t >= week)
+        if wk:
+            items.append({"text": g["key"], "today": today, "week": wk,
+                          "last": max(g["times"])})
+    items.sort(key=lambda x: (-x["week"], -x["last"]))
+
+    # 一天當中哪個時段說得最多（0-23 → 分成四段），幫家人抓陪伴的時機
+    buckets = {"清晨 (0-6)": 0, "上午 (6-12)": 0, "下午 (12-18)": 0, "晚上 (18-24)": 0}
+    labels = list(buckets)
+    for g in patterns:
+        for t in g["times"]:
+            if t >= week:
+                buckets[labels[min(3, datetime.fromtimestamp(t).hour // 6)]] += 1
+    return {"items": items[:12], "by_time": buckets,
+            "total_week": sum(i["week"] for i in items)}
+
+
 @app.get("/setup/history")
 async def setup_history():
     """Recent conversation + long-term summary, for family to see how 爺爺 is."""
@@ -936,6 +1032,8 @@ async def interact(request: Request):
 
     # #3: Fixed-phrase cache FIRST — checked before the length filter so single-char
     # distress words ("痛"/"餓") can still hit a canned reply. Instant, skips LLM+TTS.
+    track_utterance(text)   # 記進「最近常說的話」，給家人看趨勢（不影響回覆路徑）
+
     hit = match_phrase(text)
 
     # 通報判斷放在固定句「之外」：緊急詞不能因為家人還沒錄那句音檔就漏掉通報。
@@ -1450,6 +1548,14 @@ a.link{color:#26418f;font-weight:600;text-decoration:none}
 </div>
 
 <div class="card">
+  <h2>📈 爺爺最近常說的話 <span class="muted" id="patCount"></span></h2>
+  <p class="hint">看得出爺爺這陣子<b>在意什麼</b>、什麼時段最需要陪伴——例如一直問「要回家」，
+  也許是傍晚特別不安。<b>這是陪伴觀察，不是醫療診斷</b>，任何健康上的疑問請諮詢醫師。</p>
+  <div id="patterns">載入中…</div>
+  <div style="margin-top:12px"><button class="ghost sm" onclick="loadPatterns()">🔄 重新整理</button></div>
+</div>
+
+<div class="card">
   <h2>📋 爺爺近況（對話記錄）</h2>
   <p class="hint">最近聊了什麼、AI 幫忙記住的重點。方便家人了解爺爺狀況。</p>
   <div id="summary" class="sumbox" style="display:none"></div>
@@ -1548,6 +1654,36 @@ async function upPhrase(file){
   try{ await fetch('/setup/upload-phrase',{method:'POST',body:fd}); await loadPhrases(); await loadStatus(); }
   catch(e){ alert('上傳失敗：'+e); }
 }
+async function loadPatterns(){
+  const box=document.getElementById('patterns');
+  try{
+    const d=await (await fetch('/setup/patterns')).json();
+    const items=d.items||[];
+    document.getElementById('patCount').textContent = d.total_week? '（近七天 '+d.total_week+' 次）' : '';
+    if(!items.length){ box.innerHTML='<span class="muted">還沒有足夠的對話記錄。</span>'; return; }
+    const max=Math.max(...items.map(i=>i.week));
+    box.innerHTML = items.map(i=>`
+      <div class="row">
+        <div class="ph-text">${i.text}
+          <div class="ph-trig">近七天 ${i.week} 次${i.today? ' · 今天 '+i.today+' 次':''}</div>
+        </div>
+        <div style="flex:0 0 120px;background:#eef1f8;border-radius:6px;height:10px;overflow:hidden">
+          <div style="width:${Math.round(i.week/max*100)}%;height:100%;background:#26418f"></div>
+        </div>
+      </div>`).join('');
+    const bt=d.by_time||{};
+    const tmax=Math.max(1,...Object.values(bt));
+    box.innerHTML += '<div style="margin-top:14px;font-size:13px;color:#7a8494">說話最多的時段（近七天）</div>'
+      + Object.entries(bt).map(([k,v])=>`
+        <div class="row" style="padding:6px 0">
+          <div style="flex:0 0 110px;font-size:13px">${k}</div>
+          <div style="flex:1;background:#eef1f8;border-radius:6px;height:10px;overflow:hidden">
+            <div style="width:${Math.round(v/tmax*100)}%;height:100%;background:#b45309"></div>
+          </div>
+          <div class="muted" style="flex:0 0 40px;text-align:right">${v}</div>
+        </div>`).join('');
+  }catch(e){ box.innerHTML='<span class="muted">載入失敗</span>'; }
+}
 async function loadHistory(){
   const sb=document.getElementById('summary'), hb=document.getElementById('history');
   try{
@@ -1606,7 +1742,7 @@ async function setMode(m){
     const d=await (await fetch('/setup/talk-mode',{method:'POST',body:fd})).json(); paintModeBtns(d.talk_mode);
   }catch(e){ alert('設定失敗：'+e); }
 }
-loadStatus(); loadPhrases(); loadHistory(); loadMode(); loadPhotoGrid();
+loadStatus(); loadPhrases(); loadHistory(); loadMode(); loadPhotoGrid(); loadPatterns();
 </script>
 </body>
 </html>
