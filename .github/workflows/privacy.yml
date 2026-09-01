@@ -1,0 +1,18 @@
+name: Privacy scan
+
+# 第二道防線：擋住任何個人資料（家人聲音／長輩照片／私人對話／金鑰）被 commit。
+# .gitignore 是第一道，但擋不住 git add -f、也擋不住規則本身寫錯。
+on:
+  push:
+  pull_request:
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Scan tracked files for personal data and secrets
+        run: python tools/privacy_scan.py
