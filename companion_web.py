@@ -255,6 +255,16 @@ def _audio_response(content, media_type, text, reply):
     )
 
 
+def _alert_level(v):
+    """把 phrases.json 的 alert 欄位正規化成 'urgent' / 'notice' / None。
+    舊格式 true 視為 'notice'，這樣既有設定檔不會壞。"""
+    if v is True:
+        return "notice"
+    if isinstance(v, str) and v.lower() in ("urgent", "notice"):
+        return v.lower()
+    return None
+
+
 def load_phrases():
     """Preload fixed-phrase audio into memory for instant, LLM/TTS-free replies."""
     PHRASES.clear()
@@ -278,12 +288,29 @@ def load_phrases():
                 "audio": fh.read(),
                 "media": "audio/mpeg" if f.lower().endswith(".mp3") else "audio/wav",
                 "text": rule.get("text", ""),
-                "alert": rule.get("alert", False),   # True → 命中時通知家人
+                # 分級："urgent"（出聲）/ "notice"（靜音推播）/ None。
+                # 舊格式相容：alert: true → "notice"
+                "alert": _alert_level(rule.get("alert")),
             })
     print(f"固定句快取：載入 {len(PHRASES)} 條")
 
 
 _NEGATION = ("不", "沒", "別", "未", "甭")
+
+def _mentions(text, words):
+    """text 是否提到 words 之一（且不是被否定的）。跟 match_phrase 用同一套否定判斷。
+
+    往前看兩個字，不是一個：「沒有跌倒」「沒有不舒服」的否定詞隔了一個「有」，
+    只看前一字會把它當成真的跌倒／不舒服，害家人收到假警報。
+    """
+    for t in words:
+        i = text.find(t)
+        while i != -1:
+            if not any(c in _NEGATION for c in text[max(0, i - 2):i]):
+                return t
+            i = text.find(t, i + 1)
+    return None
+
 
 def match_phrase(text):
     """First rule with a trigger that appears AND is not immediately negated wins.
@@ -291,14 +318,23 @@ def match_phrase(text):
     (不痛 / 沒事 / 別怕…) to avoid the obvious false positives. If every occurrence
     of a trigger is negated, that rule is skipped."""
     for p in PHRASES:
-        for t in p["triggers"]:
-            if not t:
-                continue
-            i = text.find(t)
-            while i != -1:
-                if i == 0 or text[i - 1] not in _NEGATION:
-                    return p
-                i = text.find(t, i + 1)
+        if _mentions(text, p["triggers"]):
+            return p
+    return None
+
+
+# 緊急關鍵字：刻意「不」綁在固定句上——固定句需要家人錄好的音檔才會生效，
+# 但「跌倒」「救命」不能因為家人還沒錄音就不通報。這條路獨立判斷、永遠有效。
+URGENT_WORDS = ("跌倒", "摔倒", "摔跤", "救命", "喘不過氣", "喘不過來",
+                "胸口", "心臟", "流血", "起不來", "站不起來", "叫救護車")
+
+
+def urgency_of(text, phrase_hit):
+    """回傳 'urgent' / 'notice' / None。緊急詞優先，其次才看命中的固定句分級。"""
+    if _mentions(text, URGENT_WORDS):
+        return "urgent"
+    if phrase_hit:
+        return phrase_hit.get("alert") or None
     return None
 
 
@@ -381,15 +417,24 @@ async def _fold_and_summarize(fold_msgs, prev_summary):
         _summarizing = False
 
 
-async def notify_family(text):
-    """Push a message to family via Telegram. Best-effort; no-op if unconfigured."""
+async def notify_family(text, level="notice"):
+    """Push a message to family via Telegram. Best-effort; no-op if unconfigured.
+
+    分級的用意：如果每件小事都讓家人的手機響，家人最後會直接關掉通知——那時
+    真正的緊急狀況也傳不到。所以只有 urgent（跌倒／胸口／救命）才出聲，
+    其餘用 Telegram 的靜音推播，家人有空再看。
+    """
     if not (TELEGRAM_TOKEN and TELEGRAM_CHAT):
         return
+    urgent = (level == "urgent")
+    body = {"chat_id": TELEGRAM_CHAT,
+            "text": ("🚨【緊急】" if urgent else "⚠️【留意】") + text,
+            "disable_notification": not urgent}   # notice → 靜音送達
     try:
         await run_in_threadpool(lambda: requests.post(
             f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage",
-            json={"chat_id": TELEGRAM_CHAT, "text": text}, timeout=10))
-        print(f"［已通知家人］{text[:40]}")
+            json=body, timeout=10))
+        print(f"［已通知家人／{level}］{text[:40]}")
     except Exception as e:
         print(f"通知家人失敗（忽略）：{e}")
 
@@ -681,6 +726,39 @@ async def setup_upload_voice(name: str = Form("family"), audio: UploadFile = Fil
     return {"ok": True, "saved": dest, "bytes": len(data)}
 
 
+def _voice_quality_problem(wav, sr=24000):
+    """檢查參考音品質，有問題就回一句「照著做就能改善」的中文說明，沒問題回 None。
+
+    為什麼要擋：家人常常錄了就上傳，直到長輩聽見奇怪的聲音才發現錄壞了。
+    在這裡花 0.01 秒判斷，勝過讓長輩聽一整天不像家人的聲音。
+    """
+    n = len(wav)
+    if n == 0:
+        return "這個音檔沒有聲音，請換一個檔案。"
+    dur = n / sr
+    if dur < 8:
+        return f"這段錄音只有 {dur:.0f} 秒，太短了，聲音會不像。請錄 10–30 秒再上傳。"
+    if dur > 180:
+        return f"這段錄音長達 {dur/60:.0f} 分鐘。請剪成 10–30 秒最自然的一段再上傳。"
+
+    peak = float(np.abs(wav).max())
+    rms = float(np.sqrt(np.mean(np.square(wav))))
+    if peak < 0.05 or rms < 0.01:
+        return "錄音太小聲了，聽起來會模糊。請靠近麥克風、或把錄音音量調大，重錄一次。"
+    if float(np.mean(np.abs(wav) > 0.99)) > 0.01:
+        return "錄音有破音（音量過大導致失真）。請離麥克風遠一點、或把音量調小，重錄一次。"
+
+    # 靜音比例：切成 20ms 一格，看有多少格幾乎沒聲音
+    win = int(sr * 0.02)
+    frames = wav[:n - n % win].reshape(-1, win) if n >= win else wav.reshape(1, -1)
+    frame_rms = np.sqrt(np.mean(np.square(frames), axis=1))
+    quiet_ratio = float(np.mean(frame_rms < max(0.01, peak * 0.05)))
+    if quiet_ratio > 0.6:
+        return ("這段錄音有超過一半是空白或雜訊，可用的人聲太少。"
+                "請在安靜的地方連續說 10–30 秒，中間不要有長時間停頓。")
+    return None
+
+
 @app.post("/setup/set-voice")
 async def setup_set_voice(audio: UploadFile = File(...), ref_text: str = Form(""),
                           consent: str = Form("")):
@@ -708,6 +786,15 @@ async def setup_set_voice(audio: UploadFile = File(...), ref_text: str = Form(""
         wav24 = await run_in_threadpool(lambda: decode_audio(up, sampling_rate=24000))
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"讀不了這個音檔：{e}")
+    # 品質把關：在覆蓋既有音色「之前」擋下來，也在跑 whisper 之前（省下無謂的等待）。
+    # 音訊已經解好在記憶體裡，這幾個判斷幾乎不花成本。
+    problem = _voice_quality_problem(wav24)
+    if problem:
+        try:
+            os.remove(up)
+        except OSError:
+            pass
+        raise HTTPException(status_code=400, detail=problem)
     # 寫成 24k PCM16 wav（用 stdlib wave，不依賴 soundfile）
     ref_wav = os.path.join(vdir, "active_reference.wav")
     import wave as _wave
@@ -831,10 +918,15 @@ async def interact(request: Request):
     # #3: Fixed-phrase cache FIRST — checked before the length filter so single-char
     # distress words ("痛"/"餓") can still hit a canned reply. Instant, skips LLM+TTS.
     hit = match_phrase(text)
+
+    # 通報判斷放在固定句「之外」：緊急詞不能因為家人還沒錄那句音檔就漏掉通報。
+    level = urgency_of(text, hit)
+    if level:
+        _fire_bg(notify_family(
+            f"爺爺剛說了：「{text}」（{datetime.now():%H:%M}），請留意。", level))
+
     if hit:
         print(f"［固定句命中］→ {hit['text']}")
-        if hit.get("alert"):   # 不適等關鍵字 → 推播通知家人
-            _fire_bg(notify_family(f"⚠️ 爺爺剛說了：「{text}」（{datetime.now():%H:%M}），請留意。"))
         _remember(text, hit["text"])
         return _audio_response(hit["audio"], hit["media"], text, hit["text"])
 
@@ -1419,7 +1511,7 @@ async function loadPhrases(){
     box.innerHTML = ps.map(p=>`
       <div class="row">
         <span class="dot" style="background:${p.has_audio?'#16a34a':'#d1d5db'}"></span>
-        <div class="ph-text">${p.text||'(無文字)'}<div class="ph-trig">聽到「${(p.triggers||[]).join('、')}」就回這句 · ${p.file}${p.alert?' · ⚠️通報家人':''}</div></div>
+        <div class="ph-text">${p.text||'(無文字)'}<div class="ph-trig">聽到「${(p.triggers||[]).join('、')}」就回這句 · ${p.file}${p.alert==='urgent'?' · 🚨緊急通報(出聲)':(p.alert?' · ⚠️留意通報(靜音)':'')}</div></div>
         ${p.has_audio?`<button class="ghost sm" onclick="play('/setup/phrase-audio/'+encodeURIComponent('${p.file}')+'?t='+Date.now())">▶ 播放</button>`:''}
         <input type="file" accept="audio/*" id="f_${p.file}">
         <button class="sm" onclick="upPhrase('${p.file}')">上傳</button>

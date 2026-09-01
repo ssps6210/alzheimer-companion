@@ -3,7 +3,7 @@
   { "triggers": ["吃飯", "肚子餓", "餓"],          "file": "meal.wav",         "text": "爺爺肚子餓了嗎？我們等一下就去吃飯，會有好吃的喔。" },
   { "triggers": ["喝水", "口渴", "渴"],            "file": "water.wav",        "text": "爺爺，來喝口水吧，多喝水身體比較舒服。" },
   { "triggers": ["廁所", "尿尿", "洗手間"],         "file": "toilet.wav",       "text": "爺爺要上廁所嗎？慢慢來不要急，我扶你。" },
-  { "triggers": ["不舒服", "痛", "難受"],          "file": "discomfort.wav",   "text": "爺爺哪裡不舒服？我馬上請家人來看你，你忍一下下喔。", "alert": true },
+  { "triggers": ["不舒服", "痛", "難受"],          "file": "discomfort.wav",   "text": "爺爺哪裡不舒服？我馬上請家人來看你，你忍一下下喔。", "alert": "notice" },
   { "triggers": ["回家", "要回家"],                "file": "gohome.wav",       "text": "爺爺，這裡就是我們的家呀，有我陪著你，很安心的。" },
   { "triggers": ["害怕", "怕", "孤單", "一個人"],   "file": "scared.wav",       "text": "爺爺別怕，我在這裡，不會留你一個人的。" },
   { "triggers": ["想念", "找媽媽", "找你", "想你們"], "file": "miss_family.wav", "text": "大家都很愛爺爺喔，等一下就會來看你，我先陪著你好不好？" },
