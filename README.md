@@ -1,3 +1,7 @@
+<p align="center">
+  <b>繁體中文</b> · <a href="README.zh-CN.md">简体中文</a> · <a href="README.en.md">English</a>
+</p>
+
 <h1 align="center">阿茲海默陪伴者<br>Alzheimer's Voice Companion</h1>
 
 <p align="center">
@@ -8,7 +12,7 @@
 <p align="center">
   <a href="https://github.com/ssps6210/alzheimer-companion/releases"><img alt="下載 APK" src="https://img.shields.io/badge/📱_平板_App-下載_APK-2ea44f?style=for-the-badge"></a>
   &nbsp;
-  <a href="#-資訊安全--security"><img alt="資料不離開你的電腦" src="https://img.shields.io/badge/🔒_資料-不離開你的電腦-2b7bba?style=for-the-badge"></a>
+  <a href="#security"><img alt="資料不離開你的電腦" src="https://img.shields.io/badge/🔒_資料-不離開你的電腦-2b7bba?style=for-the-badge"></a>
 </p>
 
 <p align="center">
@@ -60,6 +64,8 @@
 </p>
 <p align="center"><img src="docs/screenshots/setup.png" width="66%" alt="家人設定台 /setup"></p>
 <p align="center"><sub>長輩畫面：一顆大按鈕、日／夜自動、閒置放老照片　｜　家人設定台 <code>/setup</code>：上傳你要的聲音<br><i>Elder's screen (day/night, idle photos) · Family console (/setup) to set the voice</i></sub></p>
+
+<a id="security"></a>
 
 ## 🔒 你家人的聲音，會怎麼被保管 · Security
 
