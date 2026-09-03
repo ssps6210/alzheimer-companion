@@ -113,6 +113,8 @@ class TTSReq(BaseModel):
     text: str
     speed: float = 1.0
     spk_id: str = ""
+    language: str = ""        # Qwen 格式（"English"）；本服務不用
+    language_code: str = ""   # XTTS 格式（"en"／"zh-cn"）；空字串＝用服務端預設
 
 
 @app.post("/tts")
@@ -127,7 +129,7 @@ def tts(req: TTSReq):
     chunks = []
     try:
         for piece in _split(text):
-            wav = model.tts(text=piece, speaker_wav=REF_AUDIO, language=LANG)
+            wav = model.tts(text=piece, speaker_wav=REF_AUDIO, language=(req.language_code or LANG))
             chunks.append(np.asarray(wav, dtype=np.float32))
     except Exception as e:
         raise HTTPException(500, str(e))

@@ -5,6 +5,11 @@
 # 改這裡就能換模組，不用動程式。沒有這個檔 / 沒裝 pyyaml 時，程式用內建預設（行為不變）。
 # 密鑰不放這裡：API key 一律從環境變數讀（方便開源，不會把 key 提交進 repo）。
 
+# 介面／語音／照護護欄的語言。可用：zh-TW（預設，繁體）、zh-CN（簡體）、en（English）
+# 語言包在 lang/ 目錄。換語言會一併換掉：介面文字、語音辨識與合成語言、
+# 安全關鍵詞（緊急詞、禁語）、以及人設——中文關鍵詞在英文部署裡是無效的。
+language: zh-TW
+
 asr:                          # 語音辨識（STT）
   model: medium               # faster-whisper: tiny/base/small/medium/large-v3
   device: cuda

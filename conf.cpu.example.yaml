@@ -6,6 +6,11 @@
 #       唯一離開本機的是大腦 LLM —— 對話「文字」會送到雲端（NVIDIA）。
 #       想連大腦也 100% 本機（完全離線），見 README「完全離線」一節（改用本地 LLM）。
 
+# 介面／語音／照護護欄的語言。可用：zh-TW（預設，繁體）、zh-CN（簡體）、en（English）
+# 語言包在 lang/ 目錄。換語言會一併換掉：介面文字、語音辨識與合成語言、
+# 安全關鍵詞（緊急詞、禁語）、以及人設——中文關鍵詞在英文部署裡是無效的。
+language: zh-TW
+
 asr:                          # 語音辨識（STT）—— CPU
   model: small                # CPU 上 medium 太慢；small 已夠用（要更快可用 base）
   device: cpu

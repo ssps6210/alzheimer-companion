@@ -82,6 +82,29 @@ CONSENT_REQUIRED = os.environ.get("CONSENT_REQUIRED", "1") != "0"
 CONSENT_PHRASE   = "我同意用我的聲音陪伴家人"
 CONSENT_KEYS     = ("同意", "陪伴")   # 兩個夠獨特的詞都出現才算通過（容忍 ASR 誤差、繁簡差異）
 
+# ── 多語支援 ───────────────────────────────────────────────────────────────
+# 繁體中文是原始語言（直接寫在這支程式裡）。lang/<code>.yaml 覆蓋三件事：
+# 引擎語言代碼、安全關鍵詞、人設，外加一份介面對照表。
+# 沒翻到的字串會留著中文——半套翻譯照樣能跑，不會變空白畫面。
+LANG_DIR = os.path.join(SCRIPT_DIR, "lang")
+
+
+def load_language(code):
+    """讀語言包。找不到或沒裝 pyyaml 就回空 dict（＝維持繁體）。"""
+    if not code or code in ("zh-TW", "zh-Hant", "zh"):
+        return {}
+    path = os.path.join(LANG_DIR, f"{code}.yaml")
+    if not yaml or not os.path.exists(path):
+        print(f"⚠ 找不到語言包 {code}（{path}），改用繁體中文")
+        return {}
+    try:
+        d = yaml.safe_load(open(path, encoding="utf-8")) or {}
+        print(f"語言包載入：{code}（{d.get('name', code)}）")
+        return d
+    except Exception as e:
+        print(f"語言包 {code} 讀取失敗，改用繁體中文：{e}")
+        return {}
+
 PORT = int(os.environ.get("COMPANION_PORT", 8080))
 
 # ── Config (borrow Open-LLM-VTuber's config-driven pluggable pattern) ─────────
@@ -104,6 +127,7 @@ DEFAULTS = {
     "notify": {"telegram_token_env": "TELEGRAM_BOT_TOKEN",
                "telegram_chat_env": "TELEGRAM_CHAT_ID",
                "daily_summary_hour": 20},   # 每天幾點寄摘要給家人；-1 = 關閉
+    "language": "zh-TW",   # 介面／語音／護欄的語言；見 lang/ 目錄（en、zh-CN）
     "active_character": "grandson",
     "characters": {"grandson": {"cosyvoice_spk": "family", "persona": (
         "你是爺爺最親近的家人，用親暱的口吻陪伴患有記憶力困難的爺爺。\n"
@@ -148,12 +172,38 @@ def load_config():
     return DEFAULTS
 
 CFG = load_config()
+LANG = load_language(CFG.get("language", "zh-TW"))
+UI_MAP = LANG.get("ui") or {}
+# 長字串先換：短字串若是長字串的一部分，先換短的會把長的切壞
+UI_KEYS = sorted(UI_MAP, key=len, reverse=True)
+
+
+def _t(s):
+    """把介面字串換成目前語言。沒有對照就原樣留著（＝退回中文，不會空白）。"""
+    for k in UI_KEYS:
+        if k in s:
+            s = s.replace(k, UI_MAP[k])
+    return s
+
+
+# 語言包可覆蓋安全關鍵詞——中文的關鍵詞列表在英文部署裡完全無效，
+# 不覆蓋的話護欄會「靜默失效」，這是最危險的一種壞法。
+_SAFETY = LANG.get("safety") or {}
+# 合成語言：一併傳給 TTS 服務，否則英文部署會用中文腔念英文
+# 兩種格式都送：Qwen 吃 "English"／"Chinese"，XTTS 吃 "en"／"zh-cn"。
+# companion 不知道對面跑的是哪一個，各自取自己看得懂的欄位。
+TTS_LANG = LANG.get("tts_language") or ""
+TTS_LANG_CODE = LANG.get("tts_language_xtts") or ""
+if _SAFETY.get("consent_phrase"):
+    CONSENT_PHRASE = _SAFETY["consent_phrase"]
+if _SAFETY.get("consent_keys"):
+    CONSENT_KEYS = tuple(_SAFETY["consent_keys"])
 
 # Derive the original module-level names from CFG so downstream code is untouched.
 WHISPER_SIZE   = CFG["asr"]["model"]
 WHISPER_DEVICE = CFG["asr"]["device"]
 WHISPER_CTYPE  = CFG["asr"]["compute_type"]
-ASR_LANG       = CFG["asr"]["language"]
+ASR_LANG       = LANG.get("asr_language") or CFG["asr"]["language"]
 MIMO_BASE_URL  = CFG["llm"]["base_url"]
 MIMO_MODEL     = CFG["llm"]["model"]
 MIMO_API_KEY   = os.environ.get(CFG["llm"]["api_key_env"], "")
@@ -176,7 +226,11 @@ TELEGRAM_CHAT  = os.environ.get(_notify_cfg.get("telegram_chat_env", "TELEGRAM_C
 DAILY_SUMMARY_HOUR = _notify_cfg.get("daily_summary_hour", 20)
 
 # #4 guard: a typo'd active_character must not crash startup.
-_chars  = CFG["characters"]
+# 語言包的人設優先（英文部署不能用中文人設——模型會用中文回覆英文使用者）
+_chars  = dict(CFG["characters"])
+for _n, _txt in (LANG.get("persona") or {}).items():
+    _chars.setdefault(_n, {})
+    _chars[_n] = dict(_chars[_n], persona=_txt)
 _active = CFG["active_character"]
 if _active not in _chars:
     print(f"⚠ active_character '{_active}' 不在 characters 裡，改用預設角色")
@@ -220,22 +274,25 @@ def _sanitize_reply(s):
 # 為什麼需要這一層——persona 已經有規則叫模型別說，但實測顯示「靠 prompt 指令」
 # 是機率性的（同一條規則會這次遵守、下次不遵守）。對失智長輩來說，一次失誤就是
 # 重新經歷一次喪親之痛，所以這裡再加一道「確定性」的防線：真的出現就整句換掉。
-_NEVER_SAY = ("過世", "去世", "往生", "不在了", "已經死", "過身", "died", "passed away")
+_NEVER_SAY = tuple(_SAFETY.get("never_say") or
+                   ("過世", "去世", "往生", "不在了", "已經死", "過身", "died", "passed away"))
 # 「走了」單獨看不準——中文裡多半是「離開」而不是「過世」（「爸爸上班走了，晚上就回來」
 # 正是我們想要的溫柔轉移，不能攔）。所以只在它跟明確的死亡語境同時出現時才算。
-_DEATH_PAIRS = (("走了", "不會回來"), ("走了", "好幾年"), ("走了", "很久"),
-                ("走了", "再也"), ("離開我們", "了"))
+_DEATH_PAIRS = tuple(tuple(p) for p in (_SAFETY.get("death_pairs") or
+                     [("走了", "不會回來"), ("走了", "好幾年"), ("走了", "很久"),
+                      ("走了", "再也"), ("離開我們", "了")]))
 # 不帶稱呼——每個家庭的叫法不同（爺爺／阿公／爸），寫死會在攔截時露出破綻
-_SAFE_FALLBACK = "大家都很惦記你喔。我先陪著你好不好？"
+_SAFE_FALLBACK = _SAFETY.get("safe_fallback") or "大家都很惦記你喔。我先陪著你好不好？"
 
 
 def guard_reply(s):
     """最後一道輸出防線。回 (安全的回覆, 是否被攔下)。"""
     if not s:
         return s, False
-    if any(w in s for w in _NEVER_SAY):
+    low = s.lower()
+    if any(w.lower() in low for w in _NEVER_SAY):
         return _SAFE_FALLBACK, True
-    if any(all(w in s for w in pair) for pair in _DEATH_PAIRS):
+    if any(all(w.lower() in low for w in pair) for pair in _DEATH_PAIRS):
         return _SAFE_FALLBACK, True
     return s, False
 
@@ -323,7 +380,9 @@ def load_phrases():
     print(f"固定句快取：載入 {len(PHRASES)} 條")
 
 
-_NEGATION = ("不", "沒", "別", "未", "甭")
+_NEGATION = tuple(_SAFETY.get("negation") or ("不", "沒", "別", "未", "甭"))
+# 中文的否定詞緊貼關鍵詞（「沒跌倒」），英文隔得遠（"didn't fall"）→ 回看視窗可調
+_NEG_WINDOW = int(_SAFETY.get("negation_window", 2))
 
 def _mentions(text, words):
     """text 是否提到 words 之一（且不是被否定的）。跟 match_phrase 用同一套否定判斷。
@@ -331,12 +390,15 @@ def _mentions(text, words):
     往前看兩個字，不是一個：「沒有跌倒」「沒有不舒服」的否定詞隔了一個「有」，
     只看前一字會把它當成真的跌倒／不舒服，害家人收到假警報。
     """
+    low = text.lower()   # 英文關鍵詞是小寫，句首大寫的「Help me」也要抓到
     for t in words:
-        i = text.find(t)
+        tl = t.lower()
+        i = low.find(tl)
         while i != -1:
-            if not any(c in _NEGATION for c in text[max(0, i - 2):i]):
+            before = low[max(0, i - _NEG_WINDOW):i]
+            if not any(nw.lower() in before for nw in _NEGATION):
                 return t
-            i = text.find(t, i + 1)
+            i = low.find(tl, i + 1)
     return None
 
 
@@ -355,15 +417,23 @@ def match_phrase(text):
 # 但「跌倒」「救命」不能因為家人還沒錄音就不通報。這條路獨立判斷、永遠有效。
 # 注意詞要夠具體：單放「心臟」會把「我心臟不好，吃很多年藥了」這種慢性陳述判成緊急，
 # 假警報多了，家人就會開始忽略緊急通知——那才是真正危險的事。
-URGENT_WORDS = ("跌倒", "摔倒", "摔跤", "救命", "喘不過氣", "喘不過來",
-                "胸口悶", "胸口痛", "胸口好痛", "心臟痛", "心臟好痛", "心絞痛",
-                "流血", "起不來", "站不起來", "叫救護車", "很喘")
+URGENT_WORDS = tuple(_SAFETY.get("urgent_words") or
+                     ("跌倒", "摔倒", "摔跤", "救命", "喘不過氣", "喘不過來",
+                      "心絞痛", "流血", "起不來", "站不起來", "叫救護車", "很喘"))
+# 部位＋症狀分開比對：中間插了程度詞也抓得到（「胸口好悶」「心臟很痛」），
+# 又不會像單放「心臟」那樣把「我心臟不好，吃很多年藥了」誤判成緊急。
+URGENT_PAIRS = tuple(tuple(p) for p in (_SAFETY.get("urgent_pairs") or
+                     [("胸口", "悶"), ("胸口", "痛"), ("心臟", "痛"),
+                      ("心臟", "不舒服"), ("喘", "不過")]))
 
 
 def urgency_of(text, phrase_hit):
     """回傳 'urgent' / 'notice' / None。緊急詞優先，其次才看命中的固定句分級。"""
     if _mentions(text, URGENT_WORDS):
         return "urgent"
+    for pair in URGENT_PAIRS:
+        if all(_mentions(text, (w,)) for w in pair):
+            return "urgent"
     if phrase_hit:
         return phrase_hit.get("alert") or None
     return None
@@ -631,7 +701,7 @@ async def startup():
 
 @app.get("/")
 async def index():
-    return HTMLResponse(HTML
+    return HTMLResponse(_t(HTML)
                         .replace("__CLIENT_TIMEOUT_MS__", str(CLIENT_TIMEOUT_MS))
                         .replace("__DEFAULT_MODE__", DEFAULT_TALK_MODE))
 
@@ -785,7 +855,7 @@ async def set_talk_mode(mode: str = Form(...)):
 # ── Setup / admin (separate from 爺爺's companion UI; for family/caregiver) ────
 @app.get("/setup")
 async def setup_page():
-    return HTMLResponse(SETUP_HTML)
+    return HTMLResponse(_t(SETUP_HTML))
 
 
 @app.get("/setup/phrases")
@@ -914,8 +984,8 @@ async def setup_set_voice(audio: UploadFile = File(...), ref_text: str = Form(""
     # ── 同意閘門：錄音裡必須包含口說的同意聲明 ────────────────────────────
     # 同意句就在同一段錄音裡 → 說話者＝同意者，把「同意」綁死在「這把聲音」上。
     if CONSENT_REQUIRED:
-        said = (rt or "") + " " + (ref_text or "")
-        if not all(k in said for k in CONSENT_KEYS):
+        said = ((rt or "") + " " + (ref_text or "")).lower()
+        if not all(k.lower() in said for k in CONSENT_KEYS):
             for p in (ref_wav, os.path.splitext(ref_wav)[0] + ".txt", up):
                 try: os.remove(p)
                 except Exception: pass
@@ -963,7 +1033,7 @@ async def setup_tts_preview(text: str = Form(...)):
         raise HTTPException(status_code=400, detail="empty")
     try:
         tts_r = await run_in_threadpool(lambda: requests.post(
-            COSY_URL, json={"text": reply, "speed": 1.0}, timeout=COSY_TIMEOUT))
+            COSY_URL, json={"text": reply, "speed": 1.0, "language": TTS_LANG, "language_code": TTS_LANG_CODE}, timeout=COSY_TIMEOUT))
         if tts_r.status_code == 200 and tts_r.content:
             return Response(content=tts_r.content, media_type="audio/wav")
     except Exception:
@@ -1112,7 +1182,8 @@ async def interact(request: Request):
     try:
         tts_r = await run_in_threadpool(lambda: requests.post(
             COSY_URL,
-            json={"text": reply, "speed": 1.0, "spk_id": CHARACTER.get("cosyvoice_spk", "")},
+            json={"text": reply, "speed": 1.0, "language": TTS_LANG, "language_code": TTS_LANG_CODE,
+                  "spk_id": CHARACTER.get("cosyvoice_spk", "")},
             timeout=COSY_TIMEOUT))
         if tts_r.status_code == 200 and tts_r.content:
             _tts_cache_put(reply, tts_r.content, "audio/wav")

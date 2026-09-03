@@ -1,0 +1,162 @@
+# English language pack.
+#
+# How this works: Traditional Chinese (zh-TW) is the source of truth, hard-coded in
+# companion_web.py. A language pack overrides three things — the engine's language
+# codes, the safety keyword lists, and the personas — plus a `ui` map applied to the
+# HTML at serve time. Anything you leave out simply falls back to Chinese, so a
+# partial translation still runs.
+#
+# Enable in conf.yaml:
+#   language: en
+
+name: English
+
+# ── Engine languages ────────────────────────────────────────────────────────
+asr_language: en            # faster-whisper language code
+tts_language: English       # Qwen3-TTS `language` argument
+tts_language_xtts: en       # XTTS-CPU language code
+
+# ── Care guardrails ─────────────────────────────────────────────────────────
+# These are matched against what the elder says and against what the model
+# replies. They MUST be translated — a Chinese keyword list is dead weight in an
+# English deployment, and the guardrails silently stop working.
+safety:
+  # Words the companion must never say: revealing that a relative has died.
+  # Intercepted before it ever reaches the speaker (see guard_reply).
+  never_say:
+    - passed away
+    - has died
+    - is dead
+    - deceased
+    - no longer with us
+    - passed on
+  # Ambiguous phrasings that only count as a death reveal alongside a second cue,
+  # so "she left for work, back tonight" is not blocked.
+  death_pairs:
+    - ["gone", "never coming back"]
+    - ["gone", "years ago"]
+    - ["left us", "long time"]
+  safe_fallback: "Everyone is thinking of you. Let me keep you company for now."
+
+  # Negation, so "I did not fall" is not read as a fall.
+  # English negation sits further from the keyword than Chinese does
+  # ("didn't fall" vs 「沒跌倒」), so the lookbehind window is wider.
+  negation: ["not", "no", "n't", "never", "didn't", "isn't", "aren't", "don't"]
+  negation_window: 14
+
+  # Spoken distress that should ring the family's phone rather than arrive silently.
+  urgent_words:
+    - fell down
+    - i fell
+    - had a fall
+    - help me
+    - can't breathe
+    - cannot breathe
+    - chest hurts
+    - chest pain
+    - my heart hurts
+    - bleeding
+    - can't get up
+    - cannot get up
+    - call an ambulance
+  # Body part + symptom matched separately, so an intensifier in between still
+  # registers ("my chest really hurts") without a bare "heart" firing on
+  # "I've had a heart condition for years".
+  urgent_pairs:
+    - ["chest", "hurt"]
+    - ["chest", "pain"]
+    - ["heart", "hurt"]
+    - ["breathe", "can"]
+
+  # Spoken consent, recorded in the same clip that becomes the voice.
+  consent_phrase: "I agree to use my voice to keep my family company"
+  consent_keys: ["agree", "voice"]
+
+# ── Personas ────────────────────────────────────────────────────────────────
+# Keep every numbered rule when you adapt these. They are care ethics, not style.
+persona:
+  grandson: |-
+    You are the closest family member of an elderly man with memory difficulties.
+    Speak to him warmly and informally, the way family does.
+    {date_line}
+
+    Your rules:
+    1. Say only one to three short sentences. Simple words, warm and natural.
+    2. No formal or polite-service language. Sound like family, not staff.
+    3. When he asks the same question again, answer it again patiently. Never say
+       "I already told you" — making him aware he cannot remember causes shame.
+    4. When you cannot understand him, say gently: "Could you say that again?"
+    5. Say warm, encouraging things. Let him feel loved.
+    6. Call him "Grandpa". Refer to yourself only as "I" — never claim to be his
+       grandson, granddaughter, a specific name, a gender, or any role. If asked
+       "who are you", say "I'm someone who is always here with you".
+    7. Never rush him, never correct him, never let him feel embarrassed.
+    8. When he mentions medicine, meals or water, remind him gently.
+    9. Do not bring up his private matters or family details unprompted — other
+       people may be in the room. Just respond warmly to what he said.
+    10. When he asks for a relative who has died or is not there, do not say they
+        are gone and do not correct him. Reassure him, then move the conversation
+        along naturally.
+    11. Never invent facts. Asked whether someone visited, or whether something
+        happened — anything you cannot know — do not say yes or no, and do not
+        describe any detail (who came, what they brought, what they said). Bring
+        it back to the present instead: "Everyone is thinking of you", "Shall I
+        keep you company?"
+    12. Answer the way people speak. No lists, no special characters.
+    13. You are only a voice; you cannot do anything physical. Never agree to open
+        a door, take him outside, or fetch something — a promise you cannot keep
+        leaves him more agitated. Especially when he says he wants to go out alone
+        (a wandering risk), do not go along with it; move his attention to the
+        present (a drink of water, sitting together) and offer to ask family to
+        come.
+
+# ── Interface text ──────────────────────────────────────────────────────────
+# Applied to the served HTML. Longest strings are replaced first, so a short
+# string that is a substring of a longer one cannot corrupt it.
+ui:
+  # The elder screen's big button uses wide letter-spacing tuned for four Chinese
+  # characters; English labels overflow it, so the rule is swapped here.
+  "#status{text-align:center;font-size:5.2vw;": "#status{text-align:center;font-size:4.2vw;"
+  "font-size:7.4vw;font-weight:600;letter-spacing:.5em;text-indent:.5em;": "font-size:5.4vw;font-weight:600;letter-spacing:.04em;"
+  # The date line is one JS expression rather than separate words, because
+  # translating 年/月/日 individually would produce "2026Year9Month4Day".
+  "n.getFullYear()+'年'+(n.getMonth()+1)+'月'+n.getDate()+'日　'+DAYS[n.getDay()]":
+    "n.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'})"
+  "爺爺的小幫手": "Grandpa’s Helper"
+  "〈 爺爺的老照片 · 碰一下就回來 〉": "〈 Grandpa’s photos · touch to come back 〉"
+  "沒聽清楚，請靠近麥克風再說一次": "I didn’t catch that — come closer"
+  "我先休息一下，想聊天再按一下": "Resting — tap when you want to chat"
+  "我在聽…（再點一下就結束）": "I’m listening… (tap again to stop)"
+  "點一下下面，就能開始聊天": "Tap below to start"
+  "請允許麥克風，再按一次": "Allow the microphone, then tap again"
+  "沒聽清楚，我再聽一次": "I didn’t catch that — listening again"
+  "沒聽清楚，再說一次": "I didn’t catch that — say it again"
+  "連線錯誤，請重試": "Connection problem — try again"
+  "回應太慢，請重試": "That took too long — try again"
+  "我在這裡陪你": "I’m here with you"
+  "點一下　結束": "Tap to finish"
+  "放開　送出": "Release to send"
+  "早安　爺爺": "Good morning, Grandpa"
+  "午安　爺爺": "Good afternoon, Grandpa"
+  "晚安　爺爺": "Good evening, Grandpa"
+  "自動說話": "Auto talk"
+  "按住說話": "Hold to talk"
+  "開始說話": "Start talking"
+  "請再說一次": "Say that again"
+  "讓我想想…": "Let me think…"
+  "錄音中...": "Listening..."
+  "識別中...": "Working..."
+  "回應中...": "Speaking..."
+  "我在聽…": "I’m listening…"
+  "請稍候…": "One moment…"
+  "請說話": "Go ahead"
+  "午後好": "Good afternoon"
+  "夜深了": "It’s late"
+  "星期日": "Sunday"
+  "星期一": "Monday"
+  "星期二": "Tuesday"
+  "星期三": "Wednesday"
+  "星期四": "Thursday"
+  "星期五": "Friday"
+  "星期六": "Saturday"
+  "你：": "You: "

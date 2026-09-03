@@ -134,6 +134,8 @@ class TTSReq(BaseModel):
     text: str
     speed: float = 1.0
     spk_id: str = ""
+    language: str = ""        # Qwen 格式（"English"／"Chinese"）；空字串＝用服務端預設
+    language_code: str = ""   # XTTS 格式；本服務不用，宣告出來才不會被當成非法欄位
 
 
 @app.post("/tts")
@@ -148,7 +150,7 @@ def tts(req: TTSReq):
     chunks = []
     try:
         for piece in _split(text):          # 逐句合成，短句穩、不飄
-            wavs, sr = model.generate_voice_clone(text=piece, language=LANG,
+            wavs, sr = model.generate_voice_clone(text=piece, language=(req.language or LANG),
                                                   ref_audio=REF_AUDIO, ref_text=ref_text)
             chunks.append(np.asarray(wavs[0], dtype=np.float32))
     except Exception as e:
