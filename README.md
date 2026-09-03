@@ -61,23 +61,35 @@
 <p align="center"><img src="docs/screenshots/setup.png" width="66%" alt="家人設定台 /setup"></p>
 <p align="center"><sub>長輩畫面：一顆大按鈕、日／夜自動、閒置放老照片　｜　家人設定台 <code>/setup</code>：上傳你要的聲音<br><i>Elder's screen (day/night, idle photos) · Family console (/setup) to set the voice</i></sub></p>
 
-## 🔒 資訊安全 · Security
+## 🔒 你家人的聲音，會怎麼被保管 · Security
 
-失智長輩的聲音和對話，是最不該外流的那種資料。這個專案的處理方式：
+**你錄的聲音、長輩的照片、他們說過的話，都只留在你自己家裡的那台電腦。**
 
-**留在你自己的電腦，一步都不出去**
-家人的聲音、長輩的老照片、每一句對話記錄、上傳的錄音——全部只存在架設的那台電腦上。沒有我們的伺服器，也沒有任何第三方會拿到。
+我們沒有伺服器，也沒有帳號可以註冊。就算我們想拿，也拿不到。
 
-**唯一離開本機的，是對話的文字**
-它會送到你自己設定的 LLM API（預設 NVIDIA，用你自己申請的免費金鑰）。想連這一步都留在本機，把 `conf.yaml` 的 `llm.base_url` 指向 [Ollama](https://ollama.com) 之類的本地模型，就是**完全離線**。
+三個最常被問到的問題：
 
-**repo 裡沒有任何個人資料，而且是自動把關的**
-`.gitignore` 擋掉聲音／照片／記憶／金鑰，另外每次 push 都會跑 [`tools/privacy_scan.py`](tools/privacy_scan.py) 掃一次已追蹤的檔案，發現音檔或金鑰樣式就讓 CI 紅燈。防的是「規則寫錯」和「手滑 `git add -f`」這兩種真的會發生的事。
+**「我爸的聲音會被拿去詐騙嗎？」**
+聲音檔案從頭到尾沒有離開過你的電腦。而且系統要設定某個人的聲音之前，會要求**本人親口說一句同意**；聽不到那句話就不會設定。另外，它講出來的每一句話都藏了一個聽不見的記號，可以驗出「這是 AI 合成的，不是本人說的」。
 
-**克隆聲音要本人同意，而且生成的語音帶浮水印**
-設定音色前，本人要在**同一段錄音的開頭**唸一句「我同意用我的聲音陪伴家人」，系統聽到才會設定；同意紀錄只留在你的機器。每段生成的語音都打上聽不見的 [AudioSeal](https://github.com/facebookresearch/audioseal) 浮水印，`python tools/detect_watermark.py <音檔>` 可以驗出它是合成的。即使音訊外流，也能被辨識為 AI 合成。
+**「會有人偷聽我們的對話嗎？」**
+對話記錄存在你的電腦裡，不會上傳。只有一件事會連到網路：長輩說完話之後，**文字**（不是聲音）會送給 AI 產生回覆，就像你在 Google 打字搜尋那樣。不想要這一步也連網的話，可以改成完全離線，見下方技術細節。
 
-> _Voices, photos and conversations never leave the machine you run it on. Only the LLM call goes out — conversation text to an API key you own — and pointing `llm.base_url` at a local model makes it fully offline. The repo ships no personal data, enforced on every push by a privacy scan in CI. Cloning a voice requires spoken consent recorded in the same clip, and every generated clip is watermarked with AudioSeal._
+**「我不懂電腦，會不會設定錯就外洩了？」**
+不會有那個機會——把個人資料傳出去的功能，這個專案根本沒有寫。要外洩得有人故意去改程式。
+
+<details>
+<summary><b>技術細節（給工程師）</b></summary>
+
+- 聲音、照片、`memory.json`、`patterns.json`、同意紀錄，全部只在本機檔案系統，沒有任何 outbound 傳輸路徑。
+- 唯一的對外呼叫是 `POST {llm.base_url}/chat/completions`，帶對話文字，用使用者自己的 API 金鑰。把 `conf.yaml` 的 `llm.base_url` 指向 [Ollama](https://ollama.com) 等本地 OpenAI 相容端點即可完全離線。
+- repo 不含任何個人資料，且每次 push 由 [`tools/privacy_scan.py`](tools/privacy_scan.py) 在 CI 掃描已追蹤檔案，命中音檔／記憶檔／金鑰樣式就讓 build 失敗。防的是規則寫錯與 `git add -f` 這兩種實際會發生的狀況。
+- 同意閘門：同意句必須出現在**成為音色的那一段錄音**裡，說話者即同意者。可用 `CONSENT_REQUIRED=0` 關閉。
+- 浮水印：[AudioSeal](https://github.com/facebookresearch/audioseal)，跑在 CPU 不佔顯存，`python tools/detect_watermark.py <音檔>` 驗證。可用 `WATERMARK=0` 關閉。
+
+</details>
+
+> _Your recordings, photos and everything your elder says stay on your own computer. There is no server to sign up for. The only thing that goes online is the conversation **text** sent to an AI service using your own API key — like typing into a search box — and you can point it at a local model to stay fully offline. Cloning a voice requires the owner's spoken consent in the same clip, and every generated clip carries an inaudible watermark identifying it as AI-synthesised._
 
 ## ✨ 特色 · Highlights
 
