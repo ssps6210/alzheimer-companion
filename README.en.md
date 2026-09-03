@@ -102,6 +102,18 @@ There's nothing to misconfigure. The ability to send personal data anywhere was 
 
 The guardrails aren't only prompt text: [`tests/test_safety.py`](tests/test_safety.py) runs nine high-risk scenarios (asking for a dead relative, repeating a question, asking to go outside alone) against the live model and checks the reply crossed no lines. Required before any persona change.
 
+## 🌏 Language
+
+Interface, speech recognition and synthesis, care guardrails and personas all
+switch together: set `language: zh-TW` (default), `zh-CN` or `en` in `conf.yaml`.
+Packs live in [`lang/`](lang/) — copy one to add a language. Anything you leave
+untranslated falls back to Chinese rather than rendering blank.
+
+> Switching language is not only interface text. The **guardrail keywords move
+> too** — urgent phrases, never-say terms, the consent sentence. A Chinese
+> keyword list matches nothing in an English deployment, so the guardrails would
+> fail silently; that is why they live in the language pack.
+
 ## 🖥️ Requirements
 
 Runs on **a computer you set up**; the elder just needs a tablet with Chrome. **An NVIDIA GPU is recommended** — speech is fast and steady (the author uses an RTX 4060 8GB). Without one, the CPU build gives you the same cloned family voice, fully local, a bit slower. Windows 10 / 11.
