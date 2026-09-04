@@ -11,7 +11,7 @@
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="📤"
+        android:text="@string/upload_emoji"
         android:textSize="36sp" />
 
     <TextView
@@ -20,7 +20,7 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="10dp"
         android:gravity="center"
-        android:text="上傳中…"
+        android:text="@string/uploading"
         android:textColor="#5A4636"
         android:textSize="16sp"
         android:textStyle="bold" />

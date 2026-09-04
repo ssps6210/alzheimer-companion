@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  預設語言：繁體中文。Android 會依裝置語言自動挑：
+    values/         繁體中文（預設，找不到其他就用這個）
+    values-en/      English
+    values-zh-rCN/  简体中文
+  加語言＝新增一個 values-<語言代碼>/strings.xml，翻譯裡面的字串即可。
+-->
+<resources>
+    <string name="app_name">爺爺的小助手</string>
+
+    <!-- 輸入電腦網址的對話窗 -->
+    <string name="server_title">連到你的電腦</string>
+    <string name="server_desc">輸入架設 companion 那台電腦的網址。\n開「一鍵啟動」時，視窗上會顯示。</string>
+    <string name="server_hint">http://192.168.1.104:8080/</string>
+    <string name="btn_connect">連線</string>
+    <string name="btn_paste">📋</string>
+    <string name="btn_rediscover">🔍 重新自動尋找</string>
+    <string name="btn_scan">📷 掃碼連線</string>
+    <string name="discover_searching">🔍 正在同一個 WiFi 上找你的電腦…</string>
+    <string name="discover_found">✅ 找到電腦：%1$s</string>
+    <string name="discover_none">沒找到，可手動輸入或再按一次上面按鈕</string>
+    <string name="discover_failed">自動尋找失敗，請手動輸入</string>
+    <string name="discover_unsupported">這台裝置不支援自動尋找，請手動輸入</string>
+
+    <!-- 家人專用選單 -->
+    <string name="family_emoji">👨‍👩‍👧</string>
+    <string name="family_title">家人專用</string>
+    <string name="btn_upload_photos">📷 上傳爺爺的老照片</string>
+    <string name="btn_change_url">🔧 重新設定電腦網址</string>
+    <string name="btn_status">📊 查看系統狀態</string>
+    <string name="btn_cancel">取消</string>
+    <string name="corner_gear">⚙</string>
+
+    <!-- 上傳照片 -->
+    <string name="upload_emoji">📤</string>
+    <string name="uploading">上傳中…</string>
+    <string name="uploading_progress">上傳中…（%1$d/%2$d）</string>
+    <string name="upload_done">✅ %1$d 張照片已上傳，爺爺畫面待機時就會輪播</string>
+    <string name="upload_partial">完成：%1$d 張成功、%2$d 張失敗（請確認電腦網址正確、companion 有在跑）</string>
+    <string name="no_picker">找不到選圖程式</string>
+    <string name="ok">好</string>
+
+    <!-- 系統狀態 -->
+    <string name="status_emoji">📊</string>
+    <string name="status_title">系統狀態</string>
+    <string name="status_loading">查詢中…</string>
+    <string name="btn_close">關閉</string>
+    <string name="status_no_url">還沒設定電腦網址</string>
+    <string name="status_unreachable">連不到電腦（%1$s）\n請確認電腦有開機、companion 有在跑、跟平板同一個網路。</string>
+    <string name="status_asr">語音辨識</string>
+    <string name="status_brain">大腦</string>
+    <string name="status_voice">克隆聲音</string>
+    <string name="status_watermark">AI 浮水印</string>
+    <string name="status_phrases">固定句 %1$d 句</string>
+    <string name="status_no_key">\n⚠ 尚未設定大腦金鑰（.env 的 %1$s）</string>
+
+    <!-- 其他 -->
+    <string name="clipboard_empty">剪貼簿是空的——先去電腦上的家人管理台按「複製網址」</string>
+    <string name="scan_prompt">對準電腦「家人管理台」上的 QR code</string>
+    <string name="camera_denied">沒有相機權限，無法掃碼——可用「📋 貼上」或手動輸入</string>
+</resources>

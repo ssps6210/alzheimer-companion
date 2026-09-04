@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 简体中文。设备语言为简体中文时自动使用。 -->
+<resources>
+    <string name="app_name">爷爷的小助手</string>
+
+    <!-- 输入电脑网址的对话窗 -->
+    <string name="server_title">连到你的电脑</string>
+    <string name="server_desc">输入架设 companion 那台电脑的网址。\n开「一键启动」时，窗口上会显示。</string>
+    <string name="server_hint">http://192.168.1.104:8080/</string>
+    <string name="btn_connect">连接</string>
+    <string name="btn_paste">📋</string>
+    <string name="btn_rediscover">🔍 重新自动寻找</string>
+    <string name="btn_scan">📷 扫码连接</string>
+    <string name="discover_searching">🔍 正在同一个 WiFi 上找你的电脑…</string>
+    <string name="discover_found">✅ 找到电脑：%1$s</string>
+    <string name="discover_none">没找到，可手动输入或再按一次上面按钮</string>
+    <string name="discover_failed">自动寻找失败，请手动输入</string>
+    <string name="discover_unsupported">这台设备不支持自动寻找，请手动输入</string>
+
+    <!-- 家人专用菜单 -->
+    <string name="family_emoji">👨‍👩‍👧</string>
+    <string name="family_title">家人专用</string>
+    <string name="btn_upload_photos">📷 上传爷爷的老照片</string>
+    <string name="btn_change_url">🔧 重新设定电脑网址</string>
+    <string name="btn_status">📊 查看系统状态</string>
+    <string name="btn_cancel">取消</string>
+    <string name="corner_gear">⚙</string>
+
+    <!-- 上传照片 -->
+    <string name="upload_emoji">📤</string>
+    <string name="uploading">上传中…</string>
+    <string name="uploading_progress">上传中…（%1$d/%2$d）</string>
+    <string name="upload_done">✅ %1$d 张照片已上传，爷爷画面待机时就会轮播</string>
+    <string name="upload_partial">完成：%1$d 张成功、%2$d 张失败（请确认电脑网址正确、companion 有在跑）</string>
+    <string name="no_picker">找不到选图程序</string>
+    <string name="ok">好</string>
+
+    <!-- 系统状态 -->
+    <string name="status_emoji">📊</string>
+    <string name="status_title">系统状态</string>
+    <string name="status_loading">查询中…</string>
+    <string name="btn_close">关闭</string>
+    <string name="status_no_url">还没设定电脑网址</string>
+    <string name="status_unreachable">连不到电脑（%1$s）\n请确认电脑有开机、companion 有在跑、跟平板同一个网络。</string>
+    <string name="status_asr">语音识别</string>
+    <string name="status_brain">大脑</string>
+    <string name="status_voice">克隆声音</string>
+    <string name="status_watermark">AI 水印</string>
+    <string name="status_phrases">固定句 %1$d 句</string>
+    <string name="status_no_key">\n⚠ 尚未设定大脑密钥（.env 的 %1$s）</string>
+
+    <!-- 其他 -->
+    <string name="clipboard_empty">剪贴板是空的——先去电脑上的家人设定台按「复制网址」</string>
+    <string name="scan_prompt">对准电脑「家人设定台」上的二维码</string>
+    <string name="camera_denied">没有相机权限，无法扫码——可用「📋 粘贴」或手动输入</string>
+</resources>

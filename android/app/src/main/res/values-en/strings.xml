@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- English. Used automatically when the device language is English. -->
+<resources>
+    <string name="app_name">Grandpa\'s Helper</string>
+
+    <!-- Server address dialog -->
+    <string name="server_title">Connect to your computer</string>
+    <string name="server_desc">Enter the address of the computer running companion.\nIt is shown in the launcher window when you start it.</string>
+    <string name="server_hint">http://192.168.1.104:8080/</string>
+    <string name="btn_connect">Connect</string>
+    <string name="btn_paste">📋</string>
+    <string name="btn_rediscover">🔍 Search again</string>
+    <string name="btn_scan">📷 Scan to connect</string>
+    <string name="discover_searching">🔍 Looking for your computer on this WiFi…</string>
+    <string name="discover_found">✅ Found: %1$s</string>
+    <string name="discover_none">Not found. Enter it by hand, or tap search again.</string>
+    <string name="discover_failed">Search failed — please enter the address by hand</string>
+    <string name="discover_unsupported">This device cannot search automatically — enter the address by hand</string>
+
+    <!-- Family menu -->
+    <string name="family_emoji">👨‍👩‍👧</string>
+    <string name="family_title">For family</string>
+    <string name="btn_upload_photos">📷 Upload old photos</string>
+    <string name="btn_change_url">🔧 Change computer address</string>
+    <string name="btn_status">📊 System status</string>
+    <string name="btn_cancel">Cancel</string>
+    <string name="corner_gear">⚙</string>
+
+    <!-- Photo upload -->
+    <string name="upload_emoji">📤</string>
+    <string name="uploading">Uploading…</string>
+    <string name="uploading_progress">Uploading… (%1$d/%2$d)</string>
+    <string name="upload_done">✅ %1$d photos uploaded. They will appear on the elder\'s screen when idle.</string>
+    <string name="upload_partial">Done: %1$d uploaded, %2$d failed (check the computer address and that companion is running)</string>
+    <string name="no_picker">No photo picker found</string>
+    <string name="ok">OK</string>
+
+    <!-- System status -->
+    <string name="status_emoji">📊</string>
+    <string name="status_title">System status</string>
+    <string name="status_loading">Checking…</string>
+    <string name="btn_close">Close</string>
+    <string name="status_no_url">No computer address set yet</string>
+    <string name="status_unreachable">Cannot reach the computer (%1$s)\nCheck it is switched on, companion is running, and it is on the same network as this tablet.</string>
+    <string name="status_asr">Speech recognition</string>
+    <string name="status_brain">AI brain</string>
+    <string name="status_voice">Cloned voice</string>
+    <string name="status_watermark">AI watermark</string>
+    <string name="status_phrases">Fixed phrases: %1$d</string>
+    <string name="status_no_key">\n⚠ No AI key set yet (%1$s in .env)</string>
+
+    <!-- Misc -->
+    <string name="clipboard_empty">Clipboard is empty — tap “Copy address” in the family console on your computer first</string>
+    <string name="scan_prompt">Point at the QR code in the family console</string>
+    <string name="camera_denied">No camera permission, so scanning is unavailable — use “📋 paste” or type the address</string>
+</resources>

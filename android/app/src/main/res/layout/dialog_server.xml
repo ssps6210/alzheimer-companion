@@ -19,7 +19,7 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="6dp"
         android:gravity="center"
-        android:text="連到你的電腦"
+        android:text="@string/server_title"
         android:textColor="#5A4636"
         android:textSize="21sp"
         android:textStyle="bold" />
@@ -30,7 +30,7 @@
         android:layout_marginTop="10dp"
         android:gravity="center"
         android:lineSpacingExtra="3dp"
-        android:text="輸入架設 companion 那台電腦的網址。\n開「一鍵啟動」時，視窗上會顯示。"
+        android:text="@string/server_desc"
         android:textColor="#8A7A66"
         android:textSize="13sp" />
 
@@ -47,7 +47,7 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:background="@drawable/dialog_input_bg"
-            android:hint="http://192.168.1.104:8080/"
+            android:hint="@string/server_hint"
             android:textColorHint="#C0B199"
             android:inputType="textUri"
             android:paddingHorizontal="16dp"
@@ -63,7 +63,7 @@
             android:minWidth="0dp"
             android:paddingHorizontal="14dp"
             android:background="@drawable/dialog_btn_ghost_bg"
-            android:text="📋"
+            android:text="@string/btn_paste"
             android:textSize="18sp"
             android:stateListAnimator="@null" />
     </LinearLayout>
@@ -74,7 +74,7 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
         android:gravity="center"
-        android:text="🔍 正在同一個 WiFi 上找你的電腦…"
+        android:text="@string/discover_searching"
         android:textColor="#B0977C"
         android:textSize="12sp" />
 
@@ -84,7 +84,7 @@
         android:layout_height="42dp"
         android:layout_marginTop="8dp"
         android:background="@drawable/dialog_btn_ghost_bg"
-        android:text="🔍 重新自動尋找"
+        android:text="@string/btn_rediscover"
         android:textColor="#8A5A2B"
         android:textSize="13sp"
         android:stateListAnimator="@null" />
@@ -95,7 +95,7 @@
         android:layout_height="42dp"
         android:layout_marginTop="8dp"
         android:background="@drawable/dialog_btn_ghost_bg"
-        android:text="📷 掃碼連線"
+        android:text="@string/btn_scan"
         android:textColor="#8A5A2B"
         android:textSize="13sp"
         android:stateListAnimator="@null" />
@@ -106,7 +106,7 @@
         android:layout_height="54dp"
         android:layout_marginTop="18dp"
         android:background="@drawable/dialog_btn_bg"
-        android:text="連線"
+        android:text="@string/btn_connect"
         android:textColor="#FFFFFF"
         android:textSize="17sp"
         android:textStyle="bold"

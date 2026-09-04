@@ -114,7 +114,7 @@ public class MainActivity extends Activity {
 
         float density = getResources().getDisplayMetrics().density;
         TextView familyBtn = new TextView(this);
-        familyBtn.setText("⚙");
+        familyBtn.setText(getString(R.string.corner_gear));
         familyBtn.setTextSize(15);
         familyBtn.setTextColor(0x66FFFFFF);
         familyBtn.setGravity(Gravity.CENTER);
@@ -170,7 +170,7 @@ public class MainActivity extends Activity {
             CharSequence text = (cm != null && cm.hasPrimaryClip() && cm.getPrimaryClip().getItemCount() > 0)
                     ? cm.getPrimaryClip().getItemAt(0).coerceToText(this) : null;
             if (text == null || text.toString().trim().isEmpty()) {
-                Toast.makeText(this, "剪貼簿是空的——先去電腦上的家人管理台按「複製網址」", Toast.LENGTH_LONG).show();
+                Toast.makeText(this, getString(R.string.clipboard_empty), Toast.LENGTH_LONG).show();
                 return;
             }
             in.setText(text.toString().trim());
@@ -212,7 +212,7 @@ public class MainActivity extends Activity {
     private void discoverBackend(TextView statusView, EditText targetInput) {
         NsdManager nsdManager = (NsdManager) getSystemService(NSD_SERVICE);
         if (nsdManager == null) {
-            if (statusView != null) statusView.setText("這台裝置不支援自動尋找，請手動輸入");
+            if (statusView != null) statusView.setText(getString(R.string.discover_unsupported));
             return;
         }
         final String initialText = targetInput != null ? targetInput.getText().toString() : null;
@@ -232,7 +232,7 @@ public class MainActivity extends Activity {
                         done[0] = true;
                         final String url = "http://" + si.getHost().getHostAddress() + ":" + si.getPort() + "/";
                         runOnUiThread(() -> {
-                            if (statusView != null) statusView.setText("✅ 找到電腦：" + url);
+                            if (statusView != null) statusView.setText(getString(R.string.discover_found, url));
                             if (targetInput != null && targetInput.getText().toString().equals(initialText)) {
                                 targetInput.setText(url);
                                 targetInput.setSelection(url.length());
@@ -247,22 +247,22 @@ public class MainActivity extends Activity {
             @Override public void onDiscoveryStopped(String serviceType) { }
 
             @Override public void onStartDiscoveryFailed(String serviceType, int errorCode) {
-                if (statusView != null) runOnUiThread(() -> statusView.setText("自動尋找失敗，請手動輸入"));
+                if (statusView != null) runOnUiThread(() -> statusView.setText(getString(R.string.discover_failed)));
             }
 
             @Override public void onStopDiscoveryFailed(String serviceType, int errorCode) { }
         };
 
-        if (statusView != null) statusView.setText("🔍 正在同一個 WiFi 上找你的電腦…");
+        if (statusView != null) statusView.setText(getString(R.string.discover_searching));
         try {
             nsdManager.discoverServices(SERVICE_TYPE, NsdManager.PROTOCOL_DNS_SD, holder[0]);
         } catch (Exception e) {
-            if (statusView != null) statusView.setText("自動尋找失敗，請手動輸入");
+            if (statusView != null) statusView.setText(getString(R.string.discover_failed));
             return;
         }
         new Handler(getMainLooper()).postDelayed(() -> {
             try { nsdManager.stopServiceDiscovery(holder[0]); } catch (Exception ignored) { }
-            if (!done[0] && statusView != null) statusView.setText("沒找到，可手動輸入或再按一次上面按鈕");
+            if (!done[0] && statusView != null) statusView.setText(getString(R.string.discover_none));
         }, DISCOVER_TIMEOUT_MS);
     }
 
@@ -273,7 +273,7 @@ public class MainActivity extends Activity {
             return;
         }
         IntentIntegrator integrator = new IntentIntegrator(this);
-        integrator.setPrompt("對準電腦「家人管理台」上的 QR code");
+        integrator.setPrompt(getString(R.string.scan_prompt));
         integrator.setBeepEnabled(false);
         integrator.setOrientationLocked(true);
         integrator.initiateScan();
@@ -286,7 +286,7 @@ public class MainActivity extends Activity {
         if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
             startQrScan();
         } else {
-            Toast.makeText(this, "沒有相機權限，無法掃碼——可用「📋 貼上」或手動輸入", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, getString(R.string.camera_denied), Toast.LENGTH_LONG).show();
         }
     }
 
@@ -299,7 +299,7 @@ public class MainActivity extends Activity {
         try {
             startActivityForResult(intent, REQ_PICK_PHOTOS);
         } catch (Exception e) {
-            Toast.makeText(this, "找不到選圖程式", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, getString(R.string.no_picker), Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -348,7 +348,7 @@ public class MainActivity extends Activity {
             int ok = 0, fail = 0;
             for (int i = 0; i < total; i++) {
                 final int idx = i + 1;
-                runOnUiThread(() -> progressText.setText("上傳中…（" + idx + "/" + total + "）"));
+                runOnUiThread(() -> progressText.setText(getString(R.string.uploading_progress, idx, total)));
                 Uri u = uris.get(i);
                 try {
                     InputStream in = getContentResolver().openInputStream(u);
@@ -365,9 +365,9 @@ public class MainActivity extends Activity {
             runOnUiThread(() -> {
                 progress.dismiss();
                 String msg = failF > 0
-                        ? ("完成：" + okF + " 張成功、" + failF + " 張失敗（請確認電腦網址正確、companion 有在跑）")
-                        : ("✅ " + okF + " 張照片已上傳，爺爺畫面待機時就會輪播");
-                new AlertDialog.Builder(this).setMessage(msg).setPositiveButton("好", null).show();
+                        ? getString(R.string.upload_partial, okF, failF)
+                        : getString(R.string.upload_done, okF);
+                new AlertDialog.Builder(this).setMessage(msg).setPositiveButton(getString(R.string.ok), null).show();
             });
         }).start();
     }
@@ -388,7 +388,7 @@ public class MainActivity extends Activity {
         }
 
         final String base = savedUrl();
-        if (base.isEmpty()) { body.setText("還沒設定電腦網址"); return; }
+        if (base.isEmpty()) { body.setText(getString(R.string.status_no_url)); return; }
         final String healthUrl = joinUrl(base, "health");
         new Thread(() -> {
             String text;
@@ -406,17 +406,17 @@ public class MainActivity extends Activity {
                 int phrases = j.optInt("phrases", 0);
 
                 StringBuilder sb = new StringBuilder();
-                sb.append(badge("語音辨識", wh != null && wh.optBoolean("loaded")));
-                sb.append(badge("大腦", mimo != null && mimo.optBoolean("ok")));
-                sb.append(badge("克隆聲音", cosyOk));
-                if (cosyOk) sb.append(badge("AI 浮水印", cosy.optBoolean("watermark")));
-                sb.append(badge("固定句 " + phrases + " 句", phrases > 0));
+                sb.append(badge(getString(R.string.status_asr), wh != null && wh.optBoolean("loaded")));
+                sb.append(badge(getString(R.string.status_brain), mimo != null && mimo.optBoolean("ok")));
+                sb.append(badge(getString(R.string.status_voice), cosyOk));
+                if (cosyOk) sb.append(badge(getString(R.string.status_watermark), cosy.optBoolean("watermark")));
+                sb.append(badge(getString(R.string.status_phrases, phrases), phrases > 0));
                 if (!j.optBoolean("llm_key_set", true)) {
-                    sb.append("\n⚠ 尚未設定大腦金鑰（.env 的 ").append(j.optString("llm_key_env", "")).append("）");
+                    sb.append(getString(R.string.status_no_key, j.optString("llm_key_env", "")));
                 }
                 text = sb.toString();
             } catch (Exception e) {
-                text = "連不到電腦（" + base + "）\n請確認電腦有開機、companion 有在跑、跟平板同一個網路。";
+                text = getString(R.string.status_unreachable, base);
             } finally {
                 if (conn != null) conn.disconnect();
             }

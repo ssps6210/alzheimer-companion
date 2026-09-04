@@ -11,7 +11,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="center_horizontal"
-        android:text="📊"
+        android:text="@string/status_emoji"
         android:textSize="36sp" />
 
     <TextView
@@ -19,7 +19,7 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="6dp"
         android:gravity="center"
-        android:text="系統狀態"
+        android:text="@string/status_title"
         android:textColor="#5A4636"
         android:textSize="20sp"
         android:textStyle="bold" />
@@ -30,7 +30,7 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
         android:lineSpacingExtra="4dp"
-        android:text="查詢中…"
+        android:text="@string/status_loading"
         android:textColor="#5A4636"
         android:textSize="14sp" />
 
@@ -40,7 +40,7 @@
         android:layout_height="48dp"
         android:layout_marginTop="18dp"
         android:background="@drawable/dialog_btn_ghost_bg"
-        android:text="關閉"
+        android:text="@string/btn_close"
         android:textColor="#8A5A2B"
         android:textSize="14sp"
         android:stateListAnimator="@null" />
