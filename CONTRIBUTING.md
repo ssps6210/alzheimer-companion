@@ -1,3 +1,7 @@
+<p align="center">
+  <b>繁體中文</b> · <a href="CONTRIBUTING.en.md">English</a>
+</p>
+
 # 參與這個專案 · Contributing
 
 謝謝你願意投入。這個專案的使用者是**失智長輩**——他們無法回報 bug、無法抱怨、

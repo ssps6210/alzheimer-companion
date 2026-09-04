@@ -50,7 +50,7 @@ An elder presses **one big button** and speaks. It answers in **a voice you chos
 
 No NVIDIA GPU? Run `install_cpu.ps1` instead — plain Windows, no WSL, same cloned family voice, just slower.
 
-**First time?** The [step-by-step install guide](docs/安裝指南.md) is written for non-engineers (Traditional Chinese).
+**First time?** The [step-by-step install guide](docs/install-guide.en.md) is written for non-engineers.
 
 ## 📱 Screenshots
 
@@ -118,7 +118,7 @@ untranslated falls back to Chinese rather than rendering blank.
 
 Runs on **a computer you set up**; the elder just needs a tablet with Chrome. **An NVIDIA GPU is recommended** — speech is fast and steady (the author uses an RTX 4060 8GB). Without one, the CPU build gives you the same cloned family voice, fully local, a bit slower. Windows 10 / 11.
 
-Stack: STT `faster-whisper` (local) · LLM any OpenAI-compatible endpoint · TTS `Qwen3-TTS` zero-shot cloning. Details in [`PROJECT.md`](PROJECT.md); to help out, see [`CONTRIBUTING.md`](CONTRIBUTING.md).
+Stack: STT `faster-whisper` (local) · LLM any OpenAI-compatible endpoint · TTS `Qwen3-TTS` zero-shot cloning. Details in [`PROJECT.md`](PROJECT.md); to help out, see [`CONTRIBUTING.en.md`](CONTRIBUTING.en.md).
 
 ## ☕ Support
 
