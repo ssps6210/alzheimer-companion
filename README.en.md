@@ -155,7 +155,19 @@ If this helps you or your family: ⭐ **star it**, so more families caring for s
 
 ## ⚠️ Disclaimer
 
-A **companionship** tool, **not a medical device**. It cannot replace medical care or emergency services. Use with family supervision.
+**This is a companionship tool. It is not a medical device, and it is not an
+emergency response system.**
+
+The "notify family when they sound unwell" feature is a best-effort reminder. It
+fails if the machine is off or offline, if nothing is said, or if speech is
+misheard. **In an emergency, call your local emergency number** — and please do
+not reduce existing care arrangements because this is installed.
+
+You must have the consent of the person whose voice you clone. Using it for
+fraud, impersonation or anything unlawful is prohibited.
+
+Full terms: **[Disclaimer and Terms of Use](DISCLAIMER.en.md)** — installing or
+using the project means you accept them.
 
 ## 📄 License
 

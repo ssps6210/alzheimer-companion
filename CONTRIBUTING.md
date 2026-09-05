@@ -86,3 +86,6 @@ powershell -ExecutionPolicy Bypass -File install_cpu.ps1  # 沒有顯卡
 ## 授權
 
 送出 PR 即表示你同意你的貢獻以 [MIT](LICENSE) 授權釋出。
+
+另請一併閱讀 [免責聲明與使用規範](DISCLAIMER.md)——特別是「不是緊急救援系統」與
+「聲音克隆的合法使用」兩節，那是這個專案在功能設計上的紅線。

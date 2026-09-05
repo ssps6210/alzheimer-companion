@@ -109,3 +109,7 @@ body dementia. Simplified Chinese copy uses 阿尔茨海默 and 认知障碍.
 
 Opening a PR means you agree to release your contribution under the [MIT](LICENSE)
 licence.
+
+Please also read the [Disclaimer and Terms of Use](DISCLAIMER.en.md) — in particular
+"not an emergency response system" and "lawful use of voice cloning". Those two
+sections are design red lines, not just legal text.
