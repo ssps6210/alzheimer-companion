@@ -272,8 +272,8 @@ phrases/    固定句 17 條爸爸真聲 wav
 voices/     克隆素材
 recordings/ 家人原始錄音（本機，已 gitignore；每個家庭放自己的）
 scripts/    現役腳本：_start_qwen.sh / _stop_qwen.sh（launch/stop.ps1 呼叫）、
-           launch.ps1 / stop.ps1 / setup_env.ps1、父親參考音 _build/_rebuild/_denoise、_flash_setup.sh、_test_qwen*
-docs/       RUN_PHASE0.md、錄音稿/講稿/項目介紹
+           launch.ps1 / launch_cpu.ps1 / stop.ps1 / _start_qwen.sh / _stop_qwen.sh / _install_wsl.sh
+docs/       安裝指南 / install-guide.en / architecture / 人設範例 / 錄音稿範例 / screenshots
 legacy/     舊實驗檔 + 2026-07 清理移入：cosyvoice_api.py / stt_api.py / 兩個舊啟動器 / CosyVoice·seed-vc·RVC·STT 實驗 _*.sh
 ```
 
