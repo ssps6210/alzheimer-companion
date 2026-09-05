@@ -50,6 +50,8 @@ An elder presses **one big button** and speaks. It answers in **a voice you chos
 
 No NVIDIA GPU? Run `install_cpu.ps1` instead — plain Windows, no WSL, same cloned family voice, just slower.
 
+**No API key required.** By default it uses a model running on your own computer (via Ollama), so not a word of the conversation leaves the house. You can switch to a cloud model for sharper replies — see *Language and the AI* below.
+
 **First time?** The [step-by-step install guide](docs/install-guide.en.md) is written for non-engineers.
 
 ## 📱 Screenshots
@@ -76,7 +78,9 @@ The three questions people actually ask:
 The audio files never leave your machine. Before the system will use someone's voice, it requires **that person to say a consent sentence out loud** in the same recording — no consent sentence, no voice. And every clip it speaks carries an inaudible marker, so anyone can verify it was AI-generated rather than really said by them.
 
 **"Can anyone listen in on our conversations?"**
-Conversation history is a file on your computer; it is never uploaded. One thing does go online: after your elder speaks, the **text** (not the audio) goes to an AI service to compose a reply, the same way typing into a search box does. If you'd rather that stayed local too, you can run fully offline — see the technical notes below.
+Conversation history is a file on your computer; it is never uploaded. And by default **not even the text leaves** — the AI that replies runs on your own computer.
+
+If you choose to switch to a cloud model for sharper replies, then the conversation **text** (never the audio) is sent out, the same way typing into a search box is. That switch is yours to make.
 
 **"I'm not good with computers. Could I leak something by mistake?"**
 There's nothing to misconfigure. The ability to send personal data anywhere was never written into this project. Leaking it would take someone deliberately modifying the code.
@@ -103,6 +107,27 @@ There's nothing to misconfigure. The ability to send personal data anywhere was 
 - 🧓 **Built for old eyes and hands** — big button, warm colours, automatic day/night; press-and-hold or continuous conversation.
 
 The guardrails aren't only prompt text: [`tests/test_safety.py`](tests/test_safety.py) runs nine high-risk scenarios (asking for a dead relative, repeating a question, asking to go outside alone) against the live model and checks the reply crossed no lines. Required before any persona change.
+
+## 🧠 The AI
+
+**Runs on your own computer by default, and needs no key at all.** Install
+[Ollama](https://ollama.com) (free), then `ollama pull qwen2.5:3b` — with that,
+not even the text of the conversation leaves the machine.
+
+| | Local model (default) | Cloud model |
+|---|---|---|
+| Key | none | your own, free to get |
+| Conversation text | **never leaves** | goes to the provider you pick |
+| Reply quality | good enough, simple sentences | more nuanced |
+| Speed | depends on your machine | usually faster |
+
+You do not have to choose up front: if the local model isn't running and you have
+put a cloud key in `.env`, it **switches to the cloud and says so at startup**.
+To stay local no matter what, leave `fallback_api_key_env` empty in `conf.yaml`.
+
+> ⚠️ On an 8GB GPU, watch the memory: speech recognition and voice cloning
+> already use most of it. Keep the local brain small (3B) or let Ollama run on
+> CPU — three models competing for the same card will crash it.
 
 ## 🌏 Language
 

@@ -117,9 +117,14 @@ except ImportError:
 
 DEFAULTS = {
     "asr":   {"model": "medium", "device": "cuda", "compute_type": "float16", "language": "zh"},
-    "llm":   {"base_url": "https://token-plan-ams.xiaomimimo.com/v1", "model": "mimo-v2.5",
-              "api_key_env": "MIMO_API_KEY", "temperature": 0.7, "max_tokens": 150,
-              "timeout": 25, "disable_thinking": True},
+    # 預設用「本機模型」：不需要任何金鑰，對話文字也不會離開這台電腦。
+    # 連不上本機模型時，才退到雲端備援（要填自己的免費金鑰）。
+    "llm":   {"base_url": "http://localhost:11434/v1", "model": "qwen2.5:3b",
+              "api_key_env": "", "temperature": 0.7, "max_tokens": 150,
+              "timeout": 25, "disable_thinking": True,
+              "fallback_base_url": "https://integrate.api.nvidia.com/v1",
+              "fallback_model": "nvidia/nemotron-3-super-120b-a12b",
+              "fallback_api_key_env": "NVIDIA_API_KEY"},
     "tts":   {"cosyvoice_url": "http://localhost:50000/tts",
               "cosyvoice_health": "http://localhost:50000/health",
               "cosyvoice_timeout": 15, "edge_voice": "zh-TW-YunJheNeural"},
@@ -204,9 +209,37 @@ WHISPER_SIZE   = CFG["asr"]["model"]
 WHISPER_DEVICE = CFG["asr"]["device"]
 WHISPER_CTYPE  = CFG["asr"]["compute_type"]
 ASR_LANG       = LANG.get("asr_language") or CFG["asr"]["language"]
-MIMO_BASE_URL  = CFG["llm"]["base_url"]
-MIMO_MODEL     = CFG["llm"]["model"]
-MIMO_API_KEY   = os.environ.get(CFG["llm"]["api_key_env"], "")
+def _resolve_llm(cfg):
+    """決定這次用哪個大腦。回 (base_url, model, api_key, 是否本機)。
+
+    本機優先的理由不只是省一把金鑰：本機模型跑起來，**對話文字完全不出門**，
+    這套系統就真的是 100% 離線的。雲端只是備援，而且要使用者自己填金鑰。
+    """
+    base, model = cfg["base_url"], cfg["model"]
+    key = os.environ.get(cfg.get("api_key_env") or "", "") if cfg.get("api_key_env") else ""
+    is_local = "localhost" in base or "127.0.0.1" in base
+
+    if is_local:
+        try:                      # 本機模型有在跑嗎？（Ollama 等 OpenAI 相容端點）
+            requests.get(base.rstrip("/").rsplit("/v1", 1)[0] + "/api/tags", timeout=2)
+            print(f"大腦：本機模型 {model}（對話文字不出這台電腦）")
+            return base, model, key, True
+        except Exception:
+            fb = cfg.get("fallback_base_url")
+            fb_key = os.environ.get(cfg.get("fallback_api_key_env") or "", "")
+            if fb and fb_key:
+                print(f"大腦：本機模型連不上 → 改用雲端備援 {cfg.get('fallback_model')}"
+                      f"（對話文字會送到雲端）")
+                return fb, cfg.get("fallback_model"), fb_key, False
+            print(f"⚠ 大腦連不上：本機模型（{base}）沒在跑，也沒設定雲端備援金鑰。\n"
+                  f"  兩條路擇一：① 裝 Ollama 並 `ollama pull {model}`（本機、免金鑰、最私密）\n"
+                  f"            ② 在 .env 填 {cfg.get('fallback_api_key_env')}（雲端、較聰明）")
+    if not is_local:
+        print(f"大腦：雲端 {model}（對話文字會送到 {base.split('//')[-1].split('/')[0]}）")
+    return base, model, key, is_local
+
+
+LLM_BASE_URL, LLM_MODEL, LLM_API_KEY, LLM_IS_LOCAL = _resolve_llm(CFG["llm"])
 LLM_TEMP       = CFG["llm"]["temperature"]
 LLM_MAXTOK     = CFG["llm"]["max_tokens"]
 LLM_TIMEOUT    = CFG["llm"]["timeout"]
@@ -616,13 +649,13 @@ async def _fold_and_summarize(fold_msgs, prev_summary):
         prompt = ("把對話濃縮成一段給陪伴AI的長期記憶筆記（150字內）："
                   "記住關於爺爺的穩定事實、他關心的事、提到的人，用簡短短句，不要流水帳。\n\n"
                   f"目前筆記：{prev_summary or '（無）'}\n\n新對話：\n{convo}\n\n更新後的筆記：")
-        body = {"model": MIMO_MODEL, "messages": [{"role": "user", "content": prompt}],
+        body = {"model": LLM_MODEL, "messages": [{"role": "user", "content": prompt}],
                 "stream": False, "temperature": 0.3, "max_tokens": 220}
         if LLM_NOTHINK:
             body["chat_template_kwargs"] = {"enable_thinking": False}
         r = await run_in_threadpool(lambda: requests.post(
-            f"{MIMO_BASE_URL}/chat/completions",
-            headers={"Authorization": f"Bearer {MIMO_API_KEY}"},
+            f"{LLM_BASE_URL}/chat/completions",
+            headers=({"Authorization": f"Bearer {LLM_API_KEY}"} if LLM_API_KEY else {}),
             json=body, timeout=LLM_TIMEOUT))
         r.raise_for_status()
         new_summary = (r.json()["choices"][0]["message"].get("content") or "").strip()
@@ -677,13 +710,13 @@ async def _daily_summary_text():
               "爺爺今天聊了什麼、心情如何、有沒有需要注意的（不適/情緒/重複擔心的事）。"
               "用平實中文，不要客套。\n\n"
               f"長期記憶：{session_summary or '（無）'}\n\n今天對話：\n{convo}\n\n摘要：")
-    body = {"model": MIMO_MODEL, "messages": [{"role": "user", "content": prompt}],
+    body = {"model": LLM_MODEL, "messages": [{"role": "user", "content": prompt}],
             "stream": False, "temperature": 0.4, "max_tokens": 200}
     if LLM_NOTHINK:
         body["chat_template_kwargs"] = {"enable_thinking": False}
     r = await run_in_threadpool(lambda: requests.post(
-        f"{MIMO_BASE_URL}/chat/completions",
-        headers={"Authorization": f"Bearer {MIMO_API_KEY}"}, json=body, timeout=LLM_TIMEOUT))
+        f"{LLM_BASE_URL}/chat/completions",
+        headers=({"Authorization": f"Bearer {LLM_API_KEY}"} if LLM_API_KEY else {}), json=body, timeout=LLM_TIMEOUT))
     r.raise_for_status()
     return (r.json()["choices"][0]["message"].get("content") or "").strip()
 
@@ -738,8 +771,8 @@ async def startup():
     # 背景執行緒跑，不 await：zeroconf 在複雜網路（VPN/虛擬網卡）下可能卡住甚至掛住，
     # 這是加分項，絕不能拖累核心服務（Whisper/大腦/克隆聲）的啟動——daemon=True 讓它卡死也不擋程式關閉。
     threading.Thread(target=_advertise_mdns, daemon=True).start()
-    if not MIMO_API_KEY:
-        print(f"⚠ 未設定 {CFG['llm']['api_key_env']} 環境變數，LLM 會無法回應！")
+    if not LLM_API_KEY and not LLM_IS_LOCAL:
+        print("⚠ 雲端大腦需要金鑰，但沒設定 → LLM 會無法回應")
     if not (TELEGRAM_TOKEN and TELEGRAM_CHAT):
         print("（未設定 Telegram，家人通知/每日摘要停用）")
     load_phrases()
@@ -764,24 +797,24 @@ async def health():
     exactly what's broken during bring-up. Runs live reachability checks."""
     wh = {"loaded": whisper is not None, "size": WHISPER_SIZE}
 
-    def _check_mimo():
-        if not MIMO_API_KEY:
-            return {"ok": False, "error": "MIMO_API_KEY 未設定"}
+    def _check_llm():
+        if not LLM_API_KEY and not LLM_IS_LOCAL:
+            return {"ok": False, "error": "雲端大腦需要金鑰，但 .env 沒設定"}
         try:
             t = time.time()
-            hbody = {"model": MIMO_MODEL,
+            hbody = {"model": LLM_MODEL,
                      "messages": [{"role": "user", "content": "嗨"}],
                      "max_tokens": 1, "stream": False}
             if LLM_NOTHINK:  # mirror the real request path
                 hbody["chat_template_kwargs"] = {"enable_thinking": False}
             r = requests.post(
-                f"{MIMO_BASE_URL}/chat/completions",
-                headers={"Authorization": f"Bearer {MIMO_API_KEY}"},
+                f"{LLM_BASE_URL}/chat/completions",
+                headers=({"Authorization": f"Bearer {LLM_API_KEY}"} if LLM_API_KEY else {}),
                 json=hbody, timeout=8)
             r.raise_for_status()
-            return {"ok": True, "model": MIMO_MODEL, "latency_ms": int((time.time() - t) * 1000)}
+            return {"ok": True, "model": LLM_MODEL, "latency_ms": int((time.time() - t) * 1000)}
         except Exception as e:
-            return {"ok": False, "model": MIMO_MODEL, "error": str(e)}
+            return {"ok": False, "model": LLM_MODEL, "error": str(e)}
 
     def _check_cosy():
         try:
@@ -794,21 +827,23 @@ async def health():
         except Exception as e:
             return {"ok": False, "error": f"{e}（WSL2 的 cosyvoice_api 未啟動？Phase 0 屬正常）"}
 
-    mimo = await run_in_threadpool(_check_mimo)
+    llm = await run_in_threadpool(_check_llm)
     cosy = await run_in_threadpool(_check_cosy)
     edge = {"available": edge_tts is not None}
 
-    if not wh["loaded"] or not mimo["ok"]:
+    if not wh["loaded"] or not llm["ok"]:
         status = "error"          # 核心鏈斷，無法回應
     elif not cosy["ok"]:
         status = "degraded"       # 可用，但無克隆聲音，靠 edge-tts（Phase 0 預期狀態）
     else:
         status = "ok"
 
-    return {"status": status, "whisper": wh, "mimo": mimo,
+    return {"status": status, "whisper": wh, "llm": llm,
             "cosyvoice": cosy, "edge_tts": edge, "phrases": len(PHRASES),
-            "llm_key_set": bool(MIMO_API_KEY),      # 大腦金鑰有沒有填（不限 NVIDIA）
-            "llm_key_env": CFG["llm"]["api_key_env"]}   # 該填哪個環境變數名
+            # 本機模型不需要金鑰，所以「就緒」＝本機在跑 或 有填雲端金鑰
+            "llm_key_set": bool(LLM_API_KEY) or LLM_IS_LOCAL,
+            "llm_is_local": LLM_IS_LOCAL,
+            "llm_key_env": CFG["llm"].get("fallback_api_key_env") or ""}
 
 
 @app.post("/reload-phrases")
@@ -1189,7 +1224,7 @@ async def interact(request: Request):
     msgs.extend(history[-MAX_HISTORY:])
     msgs.append({"role": "user", "content": text})
 
-    body = {"model": MIMO_MODEL, "messages": msgs, "stream": False,
+    body = {"model": LLM_MODEL, "messages": msgs, "stream": False,
             "temperature": LLM_TEMP, "max_tokens": LLM_MAXTOK}
     if LLM_NOTHINK:
         # Disable reasoning. Nemotron-3 accepts this too (verified: reasoning→0,
@@ -1199,8 +1234,8 @@ async def interact(request: Request):
         body["chat_template_kwargs"] = {"enable_thinking": False}
     try:
         r = await run_in_threadpool(lambda: requests.post(
-            f"{MIMO_BASE_URL}/chat/completions",
-            headers={"Authorization": f"Bearer {MIMO_API_KEY}"},
+            f"{LLM_BASE_URL}/chat/completions",
+            headers=({"Authorization": f"Bearer {LLM_API_KEY}"} if LLM_API_KEY else {}),
             json=body, timeout=LLM_TIMEOUT))
         r.raise_for_status()
         reply = (r.json()["choices"][0]["message"].get("content") or "").strip()
@@ -1726,7 +1761,7 @@ async function loadStatus(){
     const b=(ok,t,warn)=>`<span class="badge ${ok?'ok':(warn?'warn':'bad')}">${ok?'✓':'✕'} ${t}</span>`;
     el.innerHTML =
       b(h.whisper&&h.whisper.loaded,'語音辨識')+
-      b(h.mimo&&h.mimo.ok,'大腦')+
+      b(h.llm&&h.llm.ok,'大腦')+
       b(h.cosyvoice&&h.cosyvoice.ok,'克隆聲音'+((h.cosyvoice&&h.cosyvoice.ok)?'':'（未啟用·用通用聲）'),true)+
       (h.cosyvoice&&h.cosyvoice.ok?b(h.cosyvoice.watermark,'AI浮水印'+(h.cosyvoice.watermark?'':'（未啟用）'),true):'')+
       b(h.phrases>0,'固定句 '+h.phrases+' 句',true);

@@ -400,14 +400,14 @@ public class MainActivity extends Activity {
                 byte[] data = readAll(conn.getInputStream());
                 JSONObject j = new JSONObject(new String(data, "UTF-8"));
                 JSONObject wh = j.optJSONObject("whisper");
-                JSONObject mimo = j.optJSONObject("mimo");
+                JSONObject llm = j.optJSONObject("llm");
                 JSONObject cosy = j.optJSONObject("cosyvoice");
                 boolean cosyOk = cosy != null && cosy.optBoolean("ok");
                 int phrases = j.optInt("phrases", 0);
 
                 StringBuilder sb = new StringBuilder();
                 sb.append(badge(getString(R.string.status_asr), wh != null && wh.optBoolean("loaded")));
-                sb.append(badge(getString(R.string.status_brain), mimo != null && mimo.optBoolean("ok")));
+                sb.append(badge(getString(R.string.status_brain), llm != null && llm.optBoolean("ok")));
                 sb.append(badge(getString(R.string.status_voice), cosyOk));
                 if (cosyOk) sb.append(badge(getString(R.string.status_watermark), cosy.optBoolean("watermark")));
                 sb.append(badge(getString(R.string.status_phrases, phrases), phrases > 0));

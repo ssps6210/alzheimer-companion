@@ -48,7 +48,7 @@ try { $h = Invoke-RestMethod 'http://localhost:8080/health' -TimeoutSec 5 } catc
 
 Write-Host ''
 if ($h -and $h.whisper.loaded) {
-    $brain = if ($h.mimo.ok) { '就緒' } else { '未連線(檢查網路/金鑰)' }
+    $brain = if ($h.llm.ok) { '就緒' } else { '未連線(檢查網路/金鑰)' }
     $voice = if ($h.cosyvoice.ok) { '就緒' } else { '載入中(先用備援聲)' }
     Write-Host '  系統就緒！' -ForegroundColor Green
     Write-Host "    語音辨識：就緒     大腦：$brain     家人的聲音：$voice" -ForegroundColor White

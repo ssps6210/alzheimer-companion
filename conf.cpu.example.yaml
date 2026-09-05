@@ -17,14 +17,23 @@ asr:                          # 語音辨識（STT）—— CPU
   compute_type: int8          # CPU 量化：快很多、也更省記憶體
   language: zh
 
-llm:                          # 大腦（雲端；見上方隱私說明）
-  base_url: https://integrate.api.nvidia.com/v1
-  model: nvidia/nemotron-3-super-120b-a12b
-  api_key_env: NVIDIA_API_KEY
+llm:                          # 大腦
+  # 預設用「本機模型」：不需要任何金鑰，對話文字也不會離開這台電腦。
+  # 先裝 Ollama（ollama.com，免費）再 `ollama pull qwen2.5:3b` 即可。
+  base_url: http://localhost:11434/v1
+  model: qwen2.5:3b
+  api_key_env: ""              # 本機模型不需要金鑰
+
+  # 本機模型沒在跑時的備援。要用就到 build.nvidia.com 申請免費金鑰填進 .env。
+  # 留空 fallback_api_key_env 就是「只用本機、絕不連雲端」。
+  fallback_base_url: https://integrate.api.nvidia.com/v1
+  fallback_model: nvidia/nemotron-3-super-120b-a12b
+  fallback_api_key_env: NVIDIA_API_KEY
+
   temperature: 0.7
   max_tokens: 80
   timeout: 30
-  disable_thinking: true
+  disable_thinking: true       # 推理模型不關思考的話，內心獨白會漏進回覆被念出來（實測）
 
 tts:                          # 語音合成 —— XTTS-CPU（與 GPU 版同 port，drop-in，companion 免改）
   cosyvoice_url: http://localhost:50000/tts

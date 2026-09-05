@@ -46,12 +46,21 @@ skip this.*
 3. It will ask you to **restart**. After restarting you may be asked to pick a
    Linux username and password — anything you'll remember is fine.
 
-### 1.3 Get a free AI key
-Go to <https://build.nvidia.com>, sign in, open any Nemotron model, click
-**Get API Key** at the top right, and copy the `nvapi-…` string.
+### 1.3 Set up the AI (pick one)
 
-> Any OpenAI-compatible provider works — see `conf.yaml`. NVIDIA is just the
-> default because the free tier is generous.
+**① A local model — the default. No key, and the conversation stays home.**
+Install Ollama from <https://ollama.com>, then run one line in PowerShell:
+```
+ollama pull qwen2.5:3b
+```
+
+**② A cloud model — more nuanced replies, but the text is sent out.**
+Go to <https://build.nvidia.com>, sign in, open any Nemotron model, click
+**Get API Key**, and copy the `nvapi-…` string for step 2.4.
+
+> You can set up both: if the local model isn't running it switches to the
+> cloud automatically and tells you which one it used at startup. Any
+> OpenAI-compatible provider works — see `conf.yaml`.
 
 ---
 
@@ -76,9 +85,9 @@ It checks your environment, installs the Windows dependencies, sets up the WSL
 voice environment (**several GB — expect 20–40 minutes**) and copies the config
 files.
 
-### 2.4 Add your key
+### 2.4 Add your key — only if you chose the cloud
 Open `.env` in the folder with Notepad, replace the placeholder with the
-`nvapi-…` string you copied, and **save**.
+`nvapi-…` string you copied, and **save**. Skip this for a local model.
 
 ### 2.5 Start it
 Double-click **`一鍵啟動.bat`**. First start loads the models, about 1–2 minutes,
