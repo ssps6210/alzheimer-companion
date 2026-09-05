@@ -75,7 +75,7 @@ def _load_talk_mode():
 DEFAULT_TALK_MODE = _load_talk_mode()   # 'hold'=按住說話 / 'auto'=自動連續對話（爺爺畫面預設；本機可覆蓋）
 TTS_CACHE_MAX = 64
 
-# ── 聲音同意閘門（防冒用）：設定克隆音色前，錄音本人須先唸出同意聲明 ─────────
+# ── 聲音同意閘門：設定克隆音色前，錄音本人須先唸出同意聲明 ──────────────────
 # 這句會被 whisper 轉出來、比對關鍵詞；由於同意句就在同一段錄音裡，說話者＝同意者，
 # 把「同意」牢牢綁在「這個聲音」上。CONSENT_REQUIRED=0 可關（進階／本機用）。
 CONSENT_REQUIRED = os.environ.get("CONSENT_REQUIRED", "1") != "0"
@@ -246,6 +246,58 @@ app.add_middleware(
     CORSMiddleware, allow_origins=["*"], allow_methods=["*"],
     allow_headers=["*"], expose_headers=["X-User-Text", "X-Reply-Text"]
 )
+
+
+# ── /setup 的密碼保護 ──────────────────────────────────────────────────────
+# 家人管理台能上傳聲音、改設定，還能讀長輩的完整對話記錄——那是這整套系統裡
+# 最私密的東西。只要有人拿到網址就能看，比聲音外流嚴重得多，所以它一定要有鎖。
+#
+# 預設就安全、又不增加負擔的做法：沒設密碼就自動產生一組寫進 .env，啟動時印出來。
+# 長輩畫面（/）刻意不加鎖——長輩不可能輸入密碼，而那個畫面本來就沒有私密內容。
+def _ensure_setup_password():
+    pw = os.environ.get("SETUP_PASSWORD", "").strip()
+    if pw:
+        return pw
+    import secrets
+    pw = secrets.token_urlsafe(9)
+    try:
+        with open(_env_path, "a", encoding="utf-8") as f:
+            f.write(f"\n# 家人管理台 /setup 的密碼（首次啟動自動產生，可自行改成好記的）\n"
+                    f"SETUP_PASSWORD={pw}\n")
+        print(f"\n{'='*54}\n  已為家人管理台產生密碼（也寫進 .env 了）：\n"
+              f"    帳號：family    密碼：{pw}\n"
+              f"  第一次開 /setup 時輸入，瀏覽器會記住。\n{'='*54}\n")
+    except Exception as e:
+        print(f"⚠ 無法寫入 .env（{e}）。本次密碼：family / {pw}")
+    os.environ["SETUP_PASSWORD"] = pw
+    return pw
+
+
+SETUP_USER = os.environ.get("SETUP_USER", "family")
+SETUP_PASSWORD = _ensure_setup_password()
+
+
+@app.middleware("http")
+async def _guard_setup(request: Request, call_next):
+    """用 middleware 而不是逐一加裝飾器：以後新增 /setup/xxx 端點會自動受保護，
+    不必仰賴有人記得加——漏掉一個就等於整個鎖形同虛設。"""
+    if request.url.path.startswith("/setup"):
+        import base64
+        import hmac
+        ok = False
+        auth = request.headers.get("authorization", "")
+        if auth.startswith("Basic "):
+            try:
+                user, _, pw = base64.b64decode(auth[6:]).decode("utf-8").partition(":")
+                # compare_digest：避免用字串比較洩漏長度/內容的時間差
+                ok = (hmac.compare_digest(user, SETUP_USER)
+                      and hmac.compare_digest(pw, SETUP_PASSWORD))
+            except Exception:
+                ok = False
+        if not ok:
+            return Response(status_code=401, content="家人管理台需要密碼",
+                            headers={"WWW-Authenticate": 'Basic realm="Family console"'})
+    return await call_next(request)
 
 whisper = None
 history = []
@@ -934,7 +986,7 @@ async def setup_set_voice(audio: UploadFile = File(...), ref_text: str = Form(""
     存 voices/active_reference.wav (+ 逐字稿 .txt)，再叫 Qwen 熱重載，不用重啟。
     這是開源版讓「每個人塞自己想要的音色」的入口。
 
-    防冒用（同意閘門）：CONSENT_REQUIRED 時，錄音本人須在錄音裡先唸同意聲明，
+    同意閘門：CONSENT_REQUIRED 時，錄音本人須在錄音裡先唸同意聲明，
     且需勾選確認；同意證明存 voices/active_reference.consent.json。"""
     if CONSENT_REQUIRED and not consent.strip():
         raise HTTPException(status_code=400,
@@ -1579,7 +1631,7 @@ a.link{color:#26418f;font-weight:600;text-decoration:none}
   <div class="note" style="background:#fff7ed;color:#9a3412;margin-bottom:12px">
     🛡️ <b>防止聲音被冒用</b>：錄音的<b>最開頭</b>，請本人先清楚唸這一句同意聲明，接著再自然說話——<br>
     <b style="font-size:15px">「我同意用我的聲音陪伴家人」</b><br>
-    <span style="font-size:12px">同意句就在同一段錄音裡，代表「這個聲音的本人」確實同意。系統聽到才會設定。<br>另外，所有生成的語音都會打上聽不見的 AI 浮水印，可被偵測為合成聲——降低被拿去詐騙的價值。</span>
+    <span style="font-size:12px">同意句就在同一段錄音裡，代表「這個聲音的本人」確實同意。系統聽到才會設定。<br>另外，所有生成的語音都會打上聽不見的 AI 浮水印，事後可以驗證「這段是 AI 合成的，不是本人說的」。</span>
   </div>
   <div class="field">
     <input type="file" id="voiceFile" accept="audio/*">

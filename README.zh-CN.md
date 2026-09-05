@@ -87,8 +87,10 @@
 - 声音、照片、`memory.json`、`patterns.json`、同意记录，全部只在本机文件系统，没有任何 outbound 传输路径。
 - 唯一的对外调用是 `POST {llm.base_url}/chat/completions`，带对话文字，用使用者自己的 API 密钥。把 `conf.yaml` 的 `llm.base_url` 指向 [Ollama](https://ollama.com) 等本地 OpenAI 兼容端点即可完全离线。
 - repo 不含任何个人数据，且每次 push 由 [`tools/privacy_scan.py`](tools/privacy_scan.py) 在 CI 扫描已追踪文件，命中音频／记忆文件／密钥样式就让 build 失败。防的是规则写错与 `git add -f` 这两种实际会发生的状况。
+- **家人设定台 `/setup` 有密码**：它能读长辈的完整对话记录，所以一定有锁。首次启动会自动生成一组密码写进 `.env`（`SETUP_PASSWORD`）并印在启动窗口，账号是 `family`。长辈画面 `/` 刻意不设密码——长辈不可能输入密码，那个画面也没有私密内容。
 - 同意闸门：同意句必须出现在**成为音色的那一段录音**里，说话者即同意者。可用 `CONSENT_REQUIRED=0` 关闭。
 - 水印：[AudioSeal](https://github.com/facebookresearch/audioseal)，跑在 CPU 不占显存，`python tools/detect_watermark.py <音频>` 验证。可用 `WATERMARK=0` 关闭。
+  这是**事后可验证性**，不是防护——重新编码有机会把标记洗掉。它的用处是「证明某段音频是合成的」，不是「阻止有心人」。
 
 </details>
 

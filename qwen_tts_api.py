@@ -119,7 +119,7 @@ def health():
             "model_loaded": model is not None,
             "ref_set": REF_AUDIO is not None,
             "ref_path": REF_AUDIO or "",
-            "watermark": wm.ok(),   # 克隆語音是否打上 AI 浮水印（防冒用）
+            "watermark": wm.ok(),   # 克隆語音是否打上 AI 浮水印（可事後驗證為合成）
             "sample_rate": wm.WM_SR if wm.ok() else 24000, "model": MODEL_ID}
 
 
@@ -156,7 +156,7 @@ def tts(req: TTSReq):
     except Exception as e:
         raise HTTPException(500, str(e))
     audio = np.concatenate(chunks) if chunks else np.zeros(1, dtype=np.float32)
-    audio, out_sr = wm.apply(audio, 24000)   # 打上 AI 浮水印（防冒用）；未就緒則原樣輸出
+    audio, out_sr = wm.apply(audio, 24000)   # 打上 AI 浮水印（可事後驗證）；未就緒則原樣輸出
     buf = io.BytesIO()
     sf.write(buf, audio, out_sr, format="WAV", subtype="PCM_16")
     buf.seek(0)

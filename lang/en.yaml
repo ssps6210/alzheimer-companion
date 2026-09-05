@@ -177,7 +177,7 @@ ui:
   "防止聲音被冒用": "Preventing voice misuse"
   "，請本人先清楚唸這一句同意聲明，接著再自然說話——": ", the person themselves should clearly say this consent sentence, then carry on speaking naturally —"
   "同意句就在同一段錄音裡，代表「這個聲音的本人」確實同意。系統聽到才會設定。": "The consent sentence is in the same recording, so the person speaking is the person consenting. Nothing is set up until it is heard."
-  "另外，所有生成的語音都會打上聽不見的 AI 浮水印，可被偵測為合成聲——降低被拿去詐騙的價值。": "Every generated clip also carries an inaudible AI watermark, so it can be identified as synthetic — which makes it far less useful to a scammer."
+  "另外，所有生成的語音都會打上聽不見的 AI 浮水印，事後可以驗證「這段是 AI 合成的，不是本人說的」。": "Every generated clip also carries an inaudible AI watermark, so it can afterwards be verified as AI-generated rather than really said by them."
   "設為陪伴聲音": "Set as companion voice"
   "我確認我是這個聲音的": "I confirm I am the "
   "，或已取得本人同意，僅用於陪伴長輩。": " of this voice, or have their consent, and will use it only to keep an elder company."

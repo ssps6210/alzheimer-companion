@@ -23,7 +23,7 @@ echo "-- flash-attn（可選，加速；裝不起來會自動退回 sdpa，不�
 $PIP install -q "https://github.com/Dao-AILab/flash-attention/releases/download/v2.6.3/flash_attn-2.6.3+cu123torch2.3cxx11abiFALSE-cp310-cp310-linux_x86_64.whl" \
   || echo "  flash-attn 跳過（非必需，模型會用 sdpa/eager）"
 
-echo "-- audioseal（AI 語音浮水印，防冒用；裝不起來會自動略過，克隆聲仍可用但不標記）--"
+echo "-- audioseal（AI 語音浮水印，可事後驗證為合成；裝不起來會自動略過，克隆聲仍可用但不標記）--"
 $PIP install -q audioseal || echo "  audioseal 跳過 → 克隆語音不會打浮水印（可事後 pip install audioseal 補上）"
 
 echo "== 完成，驗證 --"

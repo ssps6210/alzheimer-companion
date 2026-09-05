@@ -101,7 +101,7 @@ bash scripts/_start_qwen.sh   # 用 /root/rvc_env 跑 qwen_tts_api.py，:50000
 - ⚠️「detailed thinking off」系統提示**無效**（reasoning 仍 >0，別用）。
 - companion `_sanitize_reply()`：回覆再去 emoji / markdown，免被 TTS 念出（模型偶爾加 🌞）。
 
-（舊·退役）MiMo V2.5：`token-plan-ams.xiaomimimo.com/v1` / `mimo-v2.5` / `MIMO_API_KEY`；2026-05 從本地 Ollama 換來、2026-07 端點掛掉。其坑：關思考只有 `chat_template_kwargs:{enable_thinking:false}` 有效。⚠️ 此 key 曾在對話外洩，**開源前務必輪替 / 刪除**。
+（舊·退役）MiMo V2.5：2026-05 從本地 Ollama 換來、2026-07 端點掛掉，已改用 Nemotron。留下的經驗：關思考只有 `chat_template_kwargs:{enable_thinking:false}` 有效，這個坑 Nemotron 也一樣。
 
 ---
 
@@ -113,9 +113,9 @@ bash scripts/_start_qwen.sh   # 用 /root/rvc_env 跑 qwen_tts_api.py，:50000
 - **速度**：暖機後 ~11–12s/塊（RTF~0.8，1.7B 在 4060 的地板，**已決定維持 1.7B**）。所以常見話走**固定句秒回**，只有開放對話才吃這 ~11s。
 - 參考音：`father_reference.wav`（30s，爸爸多段語句去噪+響度正規化接成）+ `father_reference.txt`（逐字稿）。
 - 依賴都在 WSL `/root/rvc_env`：`qwen-tts` / `flash-attn` / `soundfile` 等。
-- **AI 浮水印（防冒用，預設開）**：`qwen_tts_api.py` 合成後過 [AudioSeal](https://github.com/facebookresearch/audioseal)（`audioseal_wm_16bits`，放 **CPU** 不佔顯存），輸出 16k 已標記 wav。`WATERMARK=0` 可關；audioseal 沒裝 → 大聲提醒並**原樣輸出**（陪伴不會壞）。`/health` 回 `watermark` 布林、Setup 台顯示徽章。驗證：`python tools/detect_watermark.py <音檔>`。
+- **AI 浮水印（預設開）**：`qwen_tts_api.py` 合成後過 [AudioSeal](https://github.com/facebookresearch/audioseal)（`audioseal_wm_16bits`，放 **CPU** 不佔顯存），輸出 16k 已標記 wav。`WATERMARK=0` 可關；audioseal 沒裝 → 大聲提醒並**原樣輸出**（陪伴不會壞）。`/health` 回 `watermark` 布林、Setup 台顯示徽章。驗證：`python tools/detect_watermark.py <音檔>`。
 
-## 6.5 聲音同意閘門（防冒用，2026-08）
+## 6.5 聲音同意閘門（2026-08）
 - `/setup/set-voice` 設定音色前：錄音本人須在**錄音最開頭唸同意聲明**「我同意用我的聲音陪伴家人」＋前端勾選確認。companion 用自己的 whisper 轉稿後，比對關鍵詞 `("同意","陪伴")` 皆present 才放行；否則**刪掉剛寫的 active_reference** 並回 400 引導。
 - 同意句在**同一段錄音**裡 → 說話者＝同意者，把同意綁死在該聲音。證明存 `voices/active_reference.consent.json`（phrase / transcript / ref 的 sha256 / ts；`voices/` 已 gitignore）。
 - `CONSENT_REQUIRED=0` 可關（進階／本機；本機父親音走 `QWEN_REF` 不經此路，不受影響）。常數在 `companion_web.py`（`CONSENT_PHRASE` / `CONSENT_KEYS`）。
@@ -150,20 +150,23 @@ bash scripts/_start_qwen.sh   # 用 /root/rvc_env 跑 qwen_tts_api.py，:50000
   - 預設由**家人在 /setup 設**（存 `ui_state.json` 的 `talk_mode`，開機注入 HTML 的 `__DEFAULT_MODE__`）；爺爺畫面 `#modeSw` 可本機切換（存 localStorage，覆蓋預設）。端點 `GET/POST /setup/talk-mode`。
 - **懷舊老照片**：閒置 `IDLE_MS=75s` → 全螢幕老照片慢速輪播 + Ken Burns + 暈影，碰一下回來。照片放 `photos/`（jpg/png/webp），端點 `GET /photos`（列表）+ `/photos/{f}`；**沒放照片就顯示暖色占位**（目前狀態）。
 
-## 9. 對外連線 ngrok（本次進度，**未收尾**）
-狀態（2026-07-02）：
-- ✅ CLI 已裝（winget，路徑 `...\WinGet\Packages\Ngrok.Ngrok...\ngrok.exe`），已 `ngrok update` 升到 **3.39.9**（帳號要求 ≥3.20.0）。
-- ✅ authtoken 已接：`ngrok config add-authtoken …` → 存於 `%LOCALAPPDATA%\ngrok\ngrok.yml`。
-- ✅ 帳號**免費固定域名 = `coexist-sherry-parish.ngrok-free.dev`**（重開不變，可當家人固定網址）。
-- ❌ **卡住**：該域名目前被**另一個 ngrok agent 佔用**（`ERR_NGROK_334 already online`；直接打回 404，不是本專案服務，也不在本機 Windows/排程 → 疑似在 WSL / 別台的通道）。要嘛找出來停掉、要嘛 `--pooling-enabled`（不建議，會分流）。
-- ⚠️ **免費版坑**：開網址會先跳英文警告頁「You are about to visit…」要按 Visit Site → **對失智爺爺很糟**。正式給爺爺要嘛 ngrok 付費($10/月，去警告頁)、要嘛改 **Tailscale Funnel / cloudflared 具名通道**（免費、無警告頁）。
-- 開通道指令（域名釋放後）：
-  ```powershell
-  <ngrok.exe> http 8080 --url=coexist-sherry-parish.ngrok-free.dev --log=stdout
-  ```
-  本地狀態 API：`http://127.0.0.1:4040/api/tunnels`。
+## 9. 對外連線（遠端通道，未收尾）
 
-（測試期舊法：cloudflared 免註冊快速通道 `C:\Users\admin\cloudflared.exe tunnel --url http://localhost:8080`，**網址每次會變**。）
+家人在遠地時要連進來，需要一條對外通道。評估過的選項與結論：
+
+- **ngrok 免費版**：開網址會先跳英文警告頁要按 Visit Site → 對失智長輩很糟。
+  付費版（$10/月）沒有警告頁。
+- **cloudflared quick tunnel**：免註冊，但官方明說是 demo/測試用，**網址每次重開都會變**、
+  也不保證穩定，不適合當長期入口。
+- **cloudflared 具名通道 / Tailscale Funnel**：免費、無警告頁、網址固定，但要註冊帳號。
+
+**目前結論：預設不開通道。** 對非技術家庭來說，辦帳號本身就是一道門檻，而
+Android App 已經用原生麥克風授權解掉了「http 不能錄音」這個原本非通道不可的問題；
+同一個 WiFi 下用 mDNS 自動探索或掃 QR 就能連。
+
+⚠️ **真的要開通道，先確認 `/setup` 的密碼已設定**（`.env` 的 `SETUP_PASSWORD`，
+首次啟動會自動產生）。管理台能讀長輩的完整對話記錄，通道一開就等於暴露在公網上。
+實際的域名 / authtoken 屬於個人設定，放 `.env` 或本機設定檔，不要寫進這份文件。
 
 ## 10. 「給家人一鍵用」的方案（設計結論，尚未實作）
 家人**不能自己跑伺服器**（要 GPU + 全套 WSL/模型）。正解：**伺服器留你 PC 24h 開**，家人只在爺爺平板用固定網址。待做：
@@ -179,7 +182,7 @@ bash scripts/_start_qwen.sh   # 用 /root/rvc_env 跑 qwen_tts_api.py，:50000
 - [ ] 台語 STT（formoai gated 待審 / 設 HF token）。
 - [ ] 多人陪伴：媽媽錄音（`recordings/Mom_Voice/` 18 句）已存，等爸爸管線穩再做。
 - [ ] 懷舊舊照片閒置畫面（§1）。
-- [x] ~~開源前必辦~~（2026-08-19 大致完成，見 §11.6）；**剩**：`.env` 裡的舊 `MIMO_API_KEY` 建議刪、首次 `git commit` + tag。
+- [x] ~~開源前必辦~~（2026-08-19 完成，見 §11.6）。
 
 ## 11.6 開源就緒（2026-08-19）
 - **`.gitignore` 加固**：修了「行尾註解讓規則失效」的坑；現在 `recordings/`（爸媽原始錄音）、`samples/`、`voices/`、`photos/`、`memory.json`、所有 `*.wav/mp3/m4a/aac/flac/ogg`、`father_reference.*`、`legacy/` 全排除。`git add -A -n` 稽核 = 0 敏感檔。
@@ -218,7 +221,6 @@ legacy/     舊實驗檔 + 2026-07 清理移入：cosyvoice_api.py / stt_api.py 
 | 用途 | 環境變數 | 值在哪 |
 |---|---|---|
 | 大腦 Nemotron | `NVIDIA_API_KEY` | `.env`|
-| 舊 MiMo（退役）| `MIMO_API_KEY` | `.env`（**待輪替/刪**）|
 | 家人通報 | `TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHAT_ID` | 環境變數（未設則通報關）|
 | Qwen 參考音/模型 | `QWEN_REF` / `QWEN_MODEL` / `QWEN_PORT` | 預設在 `qwen_tts_api.py`，可環境覆蓋 |
 | AI 浮水印開關 | `WATERMARK`（預設 1；0=關）| WSL 端 `qwen_tts_api.py`（§6）|

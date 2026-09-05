@@ -87,8 +87,10 @@ There's nothing to misconfigure. The ability to send personal data anywhere was 
 - Voices, photos, `memory.json`, `patterns.json` and consent records live on the local filesystem only. There is no outbound path for any of them.
 - The single outbound call is `POST {llm.base_url}/chat/completions` carrying conversation text, authenticated with the user's own API key. Point `llm.base_url` at a local OpenAI-compatible endpoint such as [Ollama](https://ollama.com) for a fully offline setup.
 - No personal data ships in the repo, enforced on every push: [`tools/privacy_scan.py`](tools/privacy_scan.py) scans tracked files in CI and fails the build on audio, memory files or key patterns. It exists to catch the two things that actually happen — a malformed ignore rule, and `git add -f`.
+- **The family console `/setup` is password-protected.** It can read the elder's full conversation history, so it is never left open. A password is generated on first start, written to `.env` as `SETUP_PASSWORD` and printed in the launcher window; the username is `family`. The elder's screen `/` is deliberately not protected — an elder cannot type a password, and that screen holds nothing private.
 - Consent gate: the consent sentence must appear in **the same clip that becomes the voice**, so the speaker is the consenter. Disable with `CONSENT_REQUIRED=0`.
 - Watermark: [AudioSeal](https://github.com/facebookresearch/audioseal), running on CPU so it costs no VRAM. Verify with `python tools/detect_watermark.py <file>`. Disable with `WATERMARK=0`.
+  This is **after-the-fact verifiability, not protection** — re-encoding can strip the marker. It proves a clip was synthesised; it does not stop a determined person.
 
 </details>
 

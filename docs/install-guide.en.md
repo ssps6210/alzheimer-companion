@@ -84,6 +84,12 @@ Open `.env` in the folder with Notepad, replace the placeholder with the
 Double-click **`一鍵啟動.bat`**. First start loads the models, about 1–2 minutes,
 then two browser tabs open.
 
+> 🔑 The first start prints the **family console password** in that window (and
+> writes it to `.env` as `SETUP_PASSWORD`). When `/setup` asks, the username is
+> `family` and the password is that string. Your browser remembers it after once.
+> The console can read the elder's conversation history, so it is always locked;
+> the elder's own screen needs no password.
+
 ✅ Done. The elder's screen is <http://localhost:8080/>.
 
 ### 2.6 Optional — switch language
