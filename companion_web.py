@@ -879,6 +879,31 @@ async def get_photo(fname: str):
 
 PHOTO_EXTS = (".jpg", ".jpeg", ".png", ".webp")
 PHOTO_MAX_BYTES = 20 * 1024 * 1024   # 20MB 上限，避免傳錯檔把硬碟塞爆
+AUDIO_EXTS = (".wav", ".mp3", ".m4a", ".aac", ".flac", ".ogg", ".webm")
+AUDIO_MAX_BYTES = 50 * 1024 * 1024   # 50MB：10-30 秒的參考音遠遠用不到這麼多
+
+
+async def _read_upload(upload, max_bytes, allowed_exts, what="檔案"):
+    """讀取上傳內容，同時擋掉「太大」與「型別不對」。
+
+    邊讀邊算而不是 `await upload.read()` 一次吃完：後者對一個超大檔會先把整包
+    塞進記憶體，才有機會判斷它太大——那時已經來不及了。
+    """
+    ext = (os.path.splitext(upload.filename or "")[1] or "").lower()
+    if allowed_exts and ext not in allowed_exts:
+        raise HTTPException(status_code=400,
+                            detail=f"不支援這種{what}格式（可用：{'、'.join(allowed_exts)}）")
+    buf, size = [], 0
+    while True:
+        chunk = await upload.read(1024 * 1024)
+        if not chunk:
+            break
+        size += len(chunk)
+        if size > max_bytes:
+            raise HTTPException(status_code=400,
+                                detail=f"{what}太大（上限 {max_bytes // 1048576}MB）")
+        buf.append(chunk)
+    return b"".join(buf), ext
 
 
 @app.post("/setup/upload-photo")
@@ -886,14 +911,9 @@ async def setup_upload_photo(photo: UploadFile = File(...)):
     """家人上傳爺爺的老照片（懷舊輪播用）。/setup 網頁跟 App 原生選圖都打這支，
     後端邏輯共用一份。檔名前綴時間戳記，讓輪播順序約略照上傳先後（list_photos 會排序）。"""
     os.makedirs(PHOTOS_DIR, exist_ok=True)
-    ext = (os.path.splitext(photo.filename or "")[1] or "").lower()
-    if ext not in PHOTO_EXTS:
-        raise HTTPException(status_code=400, detail="只支援 jpg / png / webp 圖片")
-    data = await photo.read()
+    data, ext = await _read_upload(photo, PHOTO_MAX_BYTES, PHOTO_EXTS, "圖片")
     if len(data) < 100:
         raise HTTPException(status_code=400, detail="圖片是空的")
-    if len(data) > PHOTO_MAX_BYTES:
-        raise HTTPException(status_code=400, detail="圖片太大（上限 20MB）")
     fname = f"{int(time.time())}_{uuid.uuid4().hex[:8]}{ext}"
     with open(os.path.join(PHOTOS_DIR, fname), "wb") as f:
         f.write(data)
@@ -961,7 +981,7 @@ async def setup_list_phrases():
 async def setup_upload_phrase(file: str = Form(...), audio: UploadFile = File(...)):
     """Save a recording for a fixed phrase, then hot-reload (no restart)."""
     dest = os.path.join(PHRASES_DIR, os.path.basename(file))   # basename: no path traversal
-    data = await audio.read()
+    data, _ = await _read_upload(audio, AUDIO_MAX_BYTES, AUDIO_EXTS, "音檔")
     with open(dest, "wb") as f:
         f.write(data)
     load_phrases()
@@ -973,12 +993,12 @@ async def setup_upload_voice(name: str = Form("family"), audio: UploadFile = Fil
     """Save a family voice source (used later to build the cloned voice)."""
     vdir = os.path.join(SCRIPT_DIR, "voices")
     os.makedirs(vdir, exist_ok=True)
-    ext = (os.path.splitext(audio.filename or "")[1] or ".wav").lower()
-    dest = os.path.join(vdir, os.path.basename(name) + ext)
-    data = await audio.read()
-    with open(dest, "wb") as f:
+    data, ext = await _read_upload(audio, AUDIO_MAX_BYTES, AUDIO_EXTS, "音檔")
+    fname = os.path.basename(name) + (ext or ".wav")
+    with open(os.path.join(vdir, fname), "wb") as f:
         f.write(data)
-    return {"ok": True, "saved": dest, "bytes": len(data)}
+    # 只回檔名不回絕對路徑：回應內容沒必要洩漏這台機器的目錄結構
+    return {"ok": True, "saved": fname, "bytes": len(data)}
 
 
 def _voice_quality_problem(wav, sr=24000):
@@ -1028,11 +1048,10 @@ async def setup_set_voice(audio: UploadFile = File(...), ref_text: str = Form(""
             detail="請先勾選下方的同意聲明（確認你是本人或已取得本人同意），才能設定聲音。")
     vdir = os.path.join(SCRIPT_DIR, "voices")
     os.makedirs(vdir, exist_ok=True)
-    raw = await audio.read()
+    raw, ext = await _read_upload(audio, AUDIO_MAX_BYTES, AUDIO_EXTS, "音檔")
     if len(raw) < 2000:
         raise HTTPException(status_code=400, detail="音檔太短或空的")
-    ext = (os.path.splitext(audio.filename or "")[1] or ".wav").lower()
-    up = os.path.join(vdir, "active_reference_upload" + ext)
+    up = os.path.join(vdir, "active_reference_upload" + (ext or ".wav"))
     with open(up, "wb") as f:
         f.write(raw)
     # 解碼（faster-whisper 的 decode_audio 走 PyAV，支援 wav / mp3 / m4a）
@@ -1040,7 +1059,10 @@ async def setup_set_voice(audio: UploadFile = File(...), ref_text: str = Form(""
     try:
         wav24 = await run_in_threadpool(lambda: decode_audio(up, sampling_rate=24000))
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"讀不了這個音檔：{e}")
+        # 不把原始例外回給呼叫端：decode_audio 的訊息會帶上本機檔案路徑
+        print(f"音檔解碼失敗：{e}")
+        raise HTTPException(status_code=400,
+                            detail="讀不了這個音檔，請換成 wav / mp3 / m4a 再試一次")
     # 品質把關：在覆蓋既有音色「之前」擋下來，也在跑 whisper 之前（省下無謂的等待）。
     # 音訊已經解好在記憶體裡，這幾個判斷幾乎不花成本。
     problem = _voice_quality_problem(wav24)

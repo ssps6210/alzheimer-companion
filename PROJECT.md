@@ -2,7 +2,7 @@
 
 > 給患有阿茲海默症的爺爺用的語音 AI 陪伴系統。這份是「先讀這個」的總覽 + Runbook，
 > 目的：**任何一次接手都不用重新推導**。改了架構請同步更新這裡。
-> 最後更新：2026-07-02
+> 最後更新：2026-09-06
 
 ---
 
@@ -175,17 +175,21 @@ Android App 已經用原生麥克風授權解掉了「http 不能錄音」這個
 3. 給家人：**QR code + 連結 + 一頁圖文指南**（怎麼設定、爺爺怎麼用、沒反應怎麼辦、怎麼找你）。
 
 ## 11. 已知問題 / TODO
-- [ ] **看門狗**：`watchdog.ps1` 目前只顧 companion :8080，**沒顧 Qwen :50000** → 要合併（服務常因 VRAM 當機）。
-- [ ] ngrok 域名被佔（§9）+ 免費警告頁；或改 Funnel/cloudflared。
-- [ ] `/setup` 加密碼。
-- [ ] PWA + QR + 家人指南（§10）。
-- [ ] 台語 STT（formoai gated 待審 / 設 HF token）。
-- [ ] 多人陪伴：媽媽錄音（`recordings/Mom_Voice/` 18 句）已存，等爸爸管線穩再做。
-- [ ] 懷舊舊照片閒置畫面（§1）。
+
+**還沒做：**
+- [ ] 台語 STT（formoai gated 待審 / 設 HF token）——見 §7。這是最有價值也最卡的一項。
+- [ ] 多人陪伴：第二個家人的音色與人設切換（`characters` 結構已支援，缺實際流程）。
+- [ ] 遠端通道（§9）：目前結論是預設不開，等有非技術家庭實際需求再評估。
+
+**已完成（曾列為 TODO，留著避免又被當成待辦）：**
+- [x] ~~看門狗沒顧 Qwen :50000~~ → 已自動重啟 + 連續失敗才通知家人，見 §12.2。
+- [x] ~~`/setup` 加密碼~~ → 已加 Basic Auth，middleware 保護整個前綴，見 §12.1。
+- [x] ~~QR + 家人指南~~ → `/setup/qr` + App 掃碼 + mDNS 自動探索 + `docs/安裝指南.md`。
+- [x] ~~懷舊舊照片閒置畫面~~ → 已上線，並補了 `/setup` 上傳與 App 原生上傳。
 - [x] ~~開源前必辦~~（2026-08-19 完成，見 §11.6）。
 
 ## 11.6 開源就緒（2026-08-19）
-- **`.gitignore` 加固**：修了「行尾註解讓規則失效」的坑；現在 `recordings/`（爸媽原始錄音）、`samples/`、`voices/`、`photos/`、`memory.json`、所有 `*.wav/mp3/m4a/aac/flac/ogg`、`father_reference.*`、`legacy/` 全排除。`git add -A -n` 稽核 = 0 敏感檔。
+- **`.gitignore` 加固**：修了「行尾註解讓規則失效」的坑；現在 `recordings/`（家人原始錄音）、`samples/`、`voices/`、`photos/`、`memory.json`、所有 `*.wav/mp3/m4a/aac/flac/ogg`、`father_reference.*`、`legacy/` 全排除。`git add -A -n` 稽核 = 0 敏感檔。
 - **docs 去識別**：`爸爸_2分鐘錄音稿.txt`→`錄音稿範例.txt`（標題改「家人」）；`項目介紹` 移除 EduGen 提及（不連到私有商業項目）。
 - **🎙 自帶音色（bring-your-own-voice）**：repo 不含任何人聲，使用者在 `/setup`「設定陪伴聲音」上傳 10-30s 參考音 →`/setup/set-voice`（decode_audio 解碼→whisper 轉逐字稿→存 `voices/active_reference.wav`+`.txt`）→ Qwen `POST /reload-ref` **熱重載不用重啟**。音色優先序：`voices/active_reference.wav` > `QWEN_REF`(father，本地) > 無→edge 通用聲。已端到端測通。
 - **補齊**：`README.md`（含自帶音色/隱私/免責）、`LICENSE`（MIT，署名用 contributors 不放真名）、`.env.example`（改成 Nemotron，去 MiMo/CosyVoice）。
@@ -199,7 +203,64 @@ Android App 已經用原生麥克風授權解掉了「http 不能錄音」這個
 - **auto 模式嚴重卡死 ×2**：① 雜訊觸發送出後沒清 `processing` class → 按鈕死鎖（修：續聽前清狀態 + `NOSPEECH_MAX=4` 連續沒聽到就休息）；② getUserMedia await 競態 → 放開手仍無限錄音／proc 未建就用（修：`pressed`+`micBusy` 旗標 + `ctx.close()`）。
 - **其他**：半夜 0-4 點講「下午」→ 加凌晨/中午+12h制；滑鼠移出/touchcancel 收不掉錄音；auto 播放時按鈕標籤誤導；`endTurn` 蓋掉錄音中 UI；奇數位元組 `frombuffer` 500；/setup 試聽 blob URL 不 revoke；watchdog.ps1 補 BOM。
 
-## 12. 檔案結構（皆在專案資料夾內）
+## 12. 安全與隱私（2026-08～09 補強）
+
+### 12.1 `/setup` 密碼保護
+家人管理台能上傳聲音、改設定、**讀長輩完整對話記錄**——那是整套系統裡最私密的東西，
+一旦開了對外通道就等於暴露在公網。所以它一定要有鎖。
+
+- 用 **middleware 保護整個 `/setup` 前綴**，不是逐一加裝飾器：以後新增端點自動受保護，
+  漏掉一個就等於整個鎖形同虛設。
+- 預設就安全又不增加負擔：沒設 `SETUP_PASSWORD` 時，首次啟動自動產生一組寫進 `.env`
+  並印在啟動視窗。帳號預設 `family`（`SETUP_USER` 可改）。
+- 憑證用 `hmac.compare_digest` 比對，避免時間差side channel。
+- **長輩畫面 `/` 刻意不鎖**——長輩不可能輸入密碼，而那個畫面沒有私密內容。
+
+### 12.2 看門狗
+`watchdog.ps1` 現在同時顧 companion 與語音克隆服務：
+- Qwen/XTTS 掛了會**自動重啟**（呼叫自我定位的 `scripts/_start_qwen.sh`）。
+- 連續失敗 3 次（約 90 秒）才通知家人，**且只在狀態轉換時發一次**＋恢復時再發一次。
+  會洗頻的通知等於沒有通知——家人被吵到關掉，真出事就傳不到。
+- Telegram 由看門狗自己發（companion 掛掉時不能靠它轉發），路徑改為自我定位。
+
+### 12.3 防止聲音被冒用
+- **口說同意閘門**：同意句必須出現在**成為音色的那一段錄音**裡 → 說話者即同意者。
+  比對用 companion 自己的 whisper 轉稿。`CONSENT_REQUIRED=0` 可關。
+- **AI 浮水印**：AudioSeal，跑 CPU 不佔顯存。⚠️ 這是**事後可驗證性，不是防護**——
+  重新編碼有機會洗掉，也能用 `WATERMARK=0` 關。對外別講成「防詐騙」。
+- 兩者都是輔助設計，**不是法律擔保**，見 [`DISCLAIMER.md`](DISCLAIMER.md)。
+
+### 12.4 CI 隱私掃描
+`.gitignore` 是第一道防線，但擋不住 `git add -f`、也擋不住規則本身寫錯
+（曾發生：行尾註解讓整條規則失效）。所以每次 push 由
+[`tools/privacy_scan.py`](tools/privacy_scan.py) 掃已追蹤檔案，命中音檔／記憶檔／
+金鑰樣式就讓 CI 紅燈。
+
+### 12.5 照護護欄的測試
+`tests/test_safety.py` 用九個高風險情境對**真實模型**實測回覆有沒有踩線。
+關鍵認知：**提示詞護欄是機率性的**——用 `--repeat 5` 量測，連寫得最詳細的人設，
+「不編造」也會五次失守兩次。所以「一次都不能錯」的那類（揭穿死訊）在輸出端
+另有確定性攔截 `guard_reply()`，不只靠提示詞。
+
+## 13. 大腦：本機優先（2026-09 改）
+預設改成**跑在使用者自己電腦上的模型**（Ollama，`qwen2.5:3b`），
+不需要任何金鑰、對話文字也不出門——這才對得上 README 講的隱私立場。
+
+- `_resolve_llm()` 啟動時探測本機端點，印出現在用的是哪個大腦、以及對話文字會不會出門。
+- 本機沒跑又有雲端金鑰 → 自動切換並說明原因（不會留下一個默默壞掉的助手）。
+- 把 `fallback_api_key_env` 留空 = 只用本機、絕不連雲端。
+- 沒有金鑰時**完全不送 Authorization header**（有些本機伺服器會拒絕空 bearer）。
+- ⚠️ 8GB 顯卡注意：whisper + 聲音克隆已吃掉大部分顯存，本機大腦要用小模型或跑 CPU。
+
+## 14. 多語支援（2026-09）
+`lang/<code>.yaml` 覆蓋四層：引擎語言碼、**安全關鍵詞**、人設、介面對照表。
+繁中是原始語言（寫在程式裡），沒翻到的會退回中文而不是空白。
+
+**關鍵**：換語言必須連護欄關鍵詞一起換。中文的「跌倒」「過世」在英文部署裡
+一個都不會命中——護欄看起來還在，實際上**靜默失效**，這是最危險的壞法。
+
+
+## 15. 檔案結構（皆在專案資料夾內）
 ```
 根/         companion_web.py(主) qwen_tts_api.py(WSL TTS · 現役僅此二支)
            conf.yaml .env .env.example .gitignore requirements.txt watchdog.ps1
@@ -209,15 +270,14 @@ photos/     爺爺老照片（懷舊輪播，放 jpg/png 就播；空=暖色占�
 design/     爺爺前端_日系版.html（設計原型）
 phrases/    固定句 17 條爸爸真聲 wav
 voices/     克隆素材
-recordings/ 原始錄音：Father_Voice/  Mom_Voice/(媽媽18句)  爺爺我在_父親版.aac
+recordings/ 家人原始錄音（本機，已 gitignore；每個家庭放自己的）
 scripts/    現役腳本：_start_qwen.sh / _stop_qwen.sh（launch/stop.ps1 呼叫）、
            launch.ps1 / stop.ps1 / setup_env.ps1、父親參考音 _build/_rebuild/_denoise、_flash_setup.sh、_test_qwen*
-           ⚠️ 部分父親參考音 .sh 內部路徑仍指舊 D:\Downloads\Father_Voice，重跑要改成 recordings/
 docs/       RUN_PHASE0.md、錄音稿/講稿/項目介紹
 legacy/     舊實驗檔 + 2026-07 清理移入：cosyvoice_api.py / stt_api.py / 兩個舊啟動器 / CosyVoice·seed-vc·RVC·STT 實驗 _*.sh
 ```
 
-## 13. 環境 / 金鑰位置（值不寫這裡，開源安全）
+## 16. 環境 / 金鑰位置（值不寫這裡，開源安全）
 | 用途 | 環境變數 | 值在哪 |
 |---|---|---|
 | 大腦 Nemotron | `NVIDIA_API_KEY` | `.env`|
@@ -230,7 +290,7 @@ legacy/     舊實驗檔 + 2026-07 清理移入：cosyvoice_api.py / stt_api.py 
 - **Docker Desktop**：本機有裝（`docker-desktop` WSL 發行版 + `docker_data.vhdx`，約佔 C 碟 8G），**爺爺專案完全沒用到**；有自動啟動的 `com.docker.service` watchdog，要清得先停服務+關自動啟動才不會補回。
 - **CPU 防當**：本機 min processor state 釘 100% 避 AMD Kernel-Power 41（正解在 BIOS Global C-state Control）。
 
-## 14. 三步驟快速排錯
+## 17. 三步驟快速排錯
 1. `GET :8080/health` → 哪個 false 修哪個。`mimo.ok=false` 查 §5 的 key/端點；`cosyvoice.ok=false` 去 WSL 起 Qwen(§3.2)。
 2. 平板沒聲音 → 先確認 HTTPS 通道在（§9）、麥克風權限、Android 播 `new Audio()` 沒問題（只有 iOS 有 autoplay 坑）。
 3. 服務自己掛 → VRAM 搶爆，重起對應服務；長期靠看門狗（§11）。
