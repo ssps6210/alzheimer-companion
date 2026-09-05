@@ -4,14 +4,14 @@
 
 # How it fits together
 
-The one thing worth reading off this diagram: **almost everything happens on the
-computer in your home.** The only thing that leaves is the conversation *text*
-sent to an AI model, on a key you own — and you can point that at a local model
-to keep even this in the house.
+The one thing worth reading off this diagram: **by default, everything happens on
+the computer in your home** — including the AI that composes the replies. Nothing
+leaves at all. If you swap the local model for a cloud one (sharper replies, your
+own key), then the conversation *text* leaves, and only the text.
 
-> 這張圖最該讀出來的一件事：**幾乎所有事都發生在你家那台電腦上。**
-> 唯一離開的是送給 AI 的對話「文字」，用的是你自己的金鑰；
-> 想連這一步都留在家裡，把它指向本地模型即可。
+> 這張圖最該讀出來的一件事：**預設情況下，所有事都發生在你家那台電腦上**，
+> 連回話的 AI 也是，什麼都不出門。如果你選擇改用雲端模型（回話更細膩，
+> 用你自己的金鑰），那麼離開的是對話「文字」，而且只有文字。
 
 ```mermaid
 flowchart TB
@@ -29,8 +29,11 @@ flowchart TB
         DATA[("voices · photos<br/>memory.json<br/>patterns.json<br/>consent records")]
     end
 
-    subgraph OUT["☁️ Leaves the machine · 會離開本機"]
-        LLM["<b>LLM</b><br/>conversation <b>text</b> only<br/>your own API key<br/><i>swap for local Ollama → fully offline</i>"]
+        LLM["<b>AI brain</b> · 大腦<br/>local model by default<br/>預設跑在這台電腦上"]
+    end
+
+    subgraph OUT["☁️ Only if you choose it · 只有你選擇時才會出門"]
+        CLOUD["<b>Cloud LLM</b><br/>conversation <b>text</b> only<br/>your own API key"]
         TG["<b>Telegram</b><br/>alerts to family<br/>urgent rings · notice is silent"]
     end
 
@@ -40,6 +43,7 @@ flowchart TB
     GUARD -- "matched 命中" --> PHR
     GUARD -. "urgent / notice" .-> TG
     GUARD -- "open conversation<br/>開放對話" --> LLM
+    LLM -. "if you switch<br/>若你改用雲端" .-> CLOUD
     LLM -- "reply 回覆" --> GUARD
     GUARD --> TTS
     PHR --> WEB
@@ -50,8 +54,8 @@ flowchart TB
     classDef home fill:#eaf3ea,stroke:#4a7c59,stroke-width:2px,color:#1f3d2b
     classDef out fill:#fdeeee,stroke:#b4534b,stroke-width:2px,color:#5a2320
     classDef dev fill:#eef1f8,stroke:#26418f,stroke-width:2px,color:#1b2a5e
-    class WEB,STT,GUARD,PHR,TTS,DATA home
-    class LLM,TG out
+    class WEB,STT,GUARD,PHR,TTS,DATA,LLM home
+    class CLOUD,TG out
     class BTN dev
 ```
 
@@ -64,7 +68,8 @@ flowchart TB
    the AI having behaved correctly.
 4. **Common things skip the AI entirely.** "Time for your medicine" plays a
    recording of an actual family member, instantly.
-5. Anything else goes to the LLM as **text**. The reply passes back through the
+5. Anything else goes to the AI as **text** — by default a model running on this
+   same machine, so it does not leave. The reply passes back through the
    guardrails, which intercept a relative's death being revealed before it can
    ever be spoken.
 6. The reply is spoken in the **cloned family voice**, watermarked so it can be
@@ -92,6 +97,7 @@ have a deterministic check on the output, not just an instruction in the prompt.
 | `lang/` | Interface text, guardrail keywords and personas per language |
 | `tests/` | Nine high-risk care scenarios run against the live model |
 | `tools/privacy_scan.py` | Blocks personal data from reaching the repository, in CI |
+| `conf.yaml` | Which language, which brain, which persona — no code changes needed |
 
-Full notes, including the potholes already hit, are in
-[`PROJECT.md`](../PROJECT.md) (Traditional Chinese).
+The author keeps a private working log with the potholes hit along the way; the
+parts worth sharing get folded into this page and into `CONTRIBUTING`.

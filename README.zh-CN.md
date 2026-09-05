@@ -139,7 +139,8 @@
 
 在一台**架设的电脑**上跑，长辈只要一台有 Chrome 的平板。**推荐一张 NVIDIA 显卡**，语音又快又稳（作者用 RTX 4060 8GB）。没有显卡就用 CPU 版，一样是家人的声音、一样完全本机，速度慢一些。系统 Windows 10 / 11。
 
-技术栈：STT `faster-whisper`（本地）· LLM 任何 OpenAI 兼容端点 · TTS `Qwen3-TTS` 零样本克隆。细节见 [`PROJECT.md`](PROJECT.md)，想一起做见 [`CONTRIBUTING.md`](CONTRIBUTING.md)。
+技术栈：STT `faster-whisper`（本地）· LLM 任何 OpenAI 兼容端点 · TTS `Qwen3-TTS` 零样本克隆。
+整套怎么串起来、什么留在本机，见 [架构说明](docs/architecture.md)；想一起做见 [`CONTRIBUTING.md`](CONTRIBUTING.md)。
 
 ## ☕ 支持
 

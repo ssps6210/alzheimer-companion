@@ -61,8 +61,7 @@ powershell -ExecutionPolicy Bypass -File install.ps1      # with an NVIDIA GPU
 powershell -ExecutionPolicy Bypass -File install_cpu.ps1  # without one
 ```
 
-Architecture, what each service does, and the potholes already hit are in
-[`PROJECT.md`](PROJECT.md) (Traditional Chinese).
+Architecture and what each service does: [docs/architecture.md](docs/architecture.md).
 
 ## Before opening a PR
 

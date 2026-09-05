@@ -49,7 +49,7 @@ powershell -ExecutionPolicy Bypass -File install.ps1      # 有 NVIDIA 顯卡
 powershell -ExecutionPolicy Bypass -File install_cpu.ps1  # 沒有顯卡
 ```
 
-架構、各服務的角色、踩過的坑，都寫在 [`PROJECT.md`](PROJECT.md)。
+架構與各服務的角色見 [架構說明](docs/architecture.md)。
 
 ## 送 PR 之前
 

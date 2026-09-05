@@ -145,7 +145,8 @@ untranslated falls back to Chinese rather than rendering blank.
 
 Runs on **a computer you set up**; the elder just needs a tablet with Chrome. **An NVIDIA GPU is recommended** — speech is fast and steady (the author uses an RTX 4060 8GB). Without one, the CPU build gives you the same cloned family voice, fully local, a bit slower. Windows 10 / 11.
 
-Stack: STT `faster-whisper` (local) · LLM any OpenAI-compatible endpoint · TTS `Qwen3-TTS` zero-shot cloning. Details in [`PROJECT.md`](PROJECT.md); to help out, see [`CONTRIBUTING.en.md`](CONTRIBUTING.en.md).
+Stack: STT `faster-whisper` (local) · LLM any OpenAI-compatible endpoint · TTS `Qwen3-TTS` zero-shot cloning.
+How the pieces fit together and what stays on your machine: [architecture](docs/architecture.md). To help out, see [`CONTRIBUTING.en.md`](CONTRIBUTING.en.md).
 
 ## ☕ Support
 

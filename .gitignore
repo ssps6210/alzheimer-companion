@@ -81,3 +81,10 @@ android/local.properties
 android/.idea/
 *.apk
 *.aab
+
+# ── 個人開發筆記（本機保留，不公開）────────────────────────────
+# PROJECT.md 是寫給自己的工作日誌：隨手記路徑、金鑰位置、家裡的網路設定。
+# 它的價值就來自「不用考慮讀者」，一旦公開，每次加一行都得先自我審查——
+# 而遲早會忘記審查一次。這個 repo 至今找到的每一次外洩都出自這類檔案。
+# 對外要的東西另有專門文件：README / docs/architecture.md / CONTRIBUTING / DISCLAIMER。
+PROJECT.md

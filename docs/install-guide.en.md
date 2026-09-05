@@ -176,5 +176,5 @@ Normal. PyTorch plus the models is several GB. Leave it running.
 
 ---
 
-Still stuck? Open an **Issue** on this repository, or see the troubleshooting
-section in [`PROJECT.md`](../PROJECT.md) (Traditional Chinese).
+Still stuck? Open an **Issue** on this repository, or read the
+[architecture notes](architecture.md).
