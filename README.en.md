@@ -111,7 +111,7 @@ The guardrails aren't only prompt text: [`tests/test_safety.py`](tests/test_safe
 ## 🧠 The AI
 
 **Runs on your own computer by default, and needs no key at all.** Install
-[Ollama](https://ollama.com) (free), then `ollama pull qwen2.5:3b` — with that,
+[Ollama](https://ollama.com) (free), then `ollama pull qwen3:4b` — with that,
 not even the text of the conversation leaves the machine.
 
 | | Local model (default) | Cloud model |
@@ -126,8 +126,11 @@ put a cloud key in `.env`, it **switches to the cloud and says so at startup**.
 To stay local no matter what, leave `fallback_api_key_env` empty in `conf.yaml`.
 
 > ⚠️ On an 8GB GPU, watch the memory: speech recognition and voice cloning
-> already use most of it. Keep the local brain small (3B) or let Ollama run on
-> CPU — three models competing for the same card will crash it.
+> already use most of it. The default local brain (Qwen3 4B) needs headroom
+> too, so `install.ps1` reserves some VRAM for the other two services —
+> Ollama then spills the rest of the model into system RAM instead of
+> fighting for the same card and crashing. Slower, not broken. If you still
+> hit out-of-memory errors, drop to a smaller model or let Ollama run on CPU.
 
 ## 🌏 Language
 

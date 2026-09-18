@@ -119,7 +119,7 @@ DEFAULTS = {
     "asr":   {"model": "medium", "device": "cuda", "compute_type": "float16", "language": "zh"},
     # 預設用「本機模型」：不需要任何金鑰，對話文字也不會離開這台電腦。
     # 連不上本機模型時，才退到雲端備援（要填自己的免費金鑰）。
-    "llm":   {"base_url": "http://localhost:11434/v1", "model": "qwen2.5:3b",
+    "llm":   {"base_url": "http://localhost:11434/v1", "model": "qwen3:4b",
               "api_key_env": "", "temperature": 0.7, "max_tokens": 150,
               "timeout": 25, "disable_thinking": True,
               "fallback_base_url": "https://integrate.api.nvidia.com/v1",

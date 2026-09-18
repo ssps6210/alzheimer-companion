@@ -3,8 +3,9 @@
 # 與 conf.example.yaml 的唯一差別是「語音辨識改用 CPU」＋逾時放寬；其餘沿用內建預設（爺爺人設等）。
 #
 # 隱私：聲音、照片、對話記錄都留在「你自己的電腦」。
-#       唯一離開本機的是大腦 LLM —— 對話「文字」會送到雲端（NVIDIA）。
-#       想連大腦也 100% 本機（完全離線），見 README「完全離線」一節（改用本地 LLM）。
+#       大腦 LLM 也預設跑在本機（見下方 llm: 區塊），對話文字不會離開這台電腦。
+#       只有你自己在 fallback_api_key_env 填了金鑰、且本機模型沒在跑時，
+#       才會改用雲端備援，這時離開本機的只有對話「文字」。
 
 # 介面／語音／照護護欄的語言。可用：zh-TW（預設，繁體）、zh-CN（簡體）、en（English）
 # 語言包在 lang/ 目錄。換語言會一併換掉：介面文字、語音辨識與合成語言、
@@ -19,9 +20,9 @@ asr:                          # 語音辨識（STT）—— CPU
 
 llm:                          # 大腦
   # 預設用「本機模型」：不需要任何金鑰，對話文字也不會離開這台電腦。
-  # 先裝 Ollama（ollama.com，免費）再 `ollama pull qwen2.5:3b` 即可。
+  # 先裝 Ollama（ollama.com，免費）再 `ollama pull qwen3:4b` 即可。
   base_url: http://localhost:11434/v1
-  model: qwen2.5:3b
+  model: qwen3:4b
   api_key_env: ""              # 本機模型不需要金鑰
 
   # 本機模型沒在跑時的備援。要用就到 build.nvidia.com 申請免費金鑰填進 .env。
