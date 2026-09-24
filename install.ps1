@@ -63,6 +63,12 @@ if (Get-Command ollama -ErrorAction SilentlyContinue) {
         Write-Host '  ✓ 已保留 2GB 顯存給語音辨識／聲音克隆（下次啟動 Ollama 生效）' -ForegroundColor Green
         Write-Host '    要調整：改「使用者環境變數」OLLAMA_GPU_OVERHEAD（單位是位元組）' -ForegroundColor DarkGray
     }
+    # KV cache 用 q8_0 量化：記憶體砍半、品質損失可忽略（需要 flash attention，
+    # 支援的顯卡預設就有開）。同樣只在使用者沒自己設過時才動。
+    if (-not [Environment]::GetEnvironmentVariable('OLLAMA_KV_CACHE_TYPE', 'User')) {
+        [Environment]::SetEnvironmentVariable('OLLAMA_KV_CACHE_TYPE', 'q8_0', 'User')
+        Write-Host '  ✓ KV cache 改用 q8_0 量化，省下的顯存讓三個服務更好相處' -ForegroundColor Green
+    }
     Write-Host "  下載 $ollamaModel（幾 GB，跟語音模型一起跑，請耐心）..." -ForegroundColor Yellow
     ollama pull $ollamaModel
     Write-Host '  ✓ 本機大腦就緒——不需要任何金鑰，對話文字不會離開這台電腦' -ForegroundColor Green
