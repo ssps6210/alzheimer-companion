@@ -54,10 +54,17 @@ memory:
   persist: true            # 存到 memory.json，重啟不忘
   summary_trigger: 24      # 對話超過此則數，把較舊的濃縮進「長期記憶摘要」
 
-notify:                    # 家人通知（Telegram）。token/chat 從環境變數讀，不入庫
+notify:                    # 家人通知（Telegram、LINE 擇一或都設）。權杖從環境變數讀，不入庫
   telegram_token_env: TELEGRAM_BOT_TOKEN
   telegram_chat_env: TELEGRAM_CHAT_ID
+  # LINE：LINE Notify 已在 2025-03-31 停止，改用「LINE 官方帳號 + Messaging API」。
+  # 到 LINE Developers 建一個 Messaging API channel → 發一組 Channel access token，
+  # 收件人 ID 在 channel 的 Basic settings「Your user ID」（先加這個官方帳號好友）。
+  # 免費方案每月推播則數有限，緊急通知優先；每日摘要會吃額度。
+  line_token_env: LINE_CHANNEL_ACCESS_TOKEN
+  line_to_env: LINE_TO
   daily_summary_hour: 20   # 每天幾點寄當日對話摘要給家人（0-23）；-1 = 關閉
+  inactivity_alert_hour: -1   # 到這個鐘點長輩今天還沒說過話，就靜音通知家人（例如 14）；-1 = 關閉
 
 # 多人陪伴：每個家人 = 一個 character（人設 + 對應的克隆聲音 spk）
 # 要換人陪伴：改 active_character；要加人：在 characters 下新增一段 + 錄好聲音。

@@ -25,6 +25,7 @@ import json
 import threading
 import time
 import re
+import glob
 import uuid
 import asyncio
 import urllib.parse
@@ -134,7 +135,10 @@ DEFAULTS = {
     "memory": {"max_history": 10, "persist": True, "summary_trigger": 24},
     "notify": {"telegram_token_env": "TELEGRAM_BOT_TOKEN",
                "telegram_chat_env": "TELEGRAM_CHAT_ID",
-               "daily_summary_hour": 20},   # 每天幾點寄摘要給家人；-1 = 關閉
+               "line_token_env": "LINE_CHANNEL_ACCESS_TOKEN",
+               "line_to_env": "LINE_TO",
+               "daily_summary_hour": 20,    # 每天幾點寄摘要給家人；-1 = 關閉
+               "inactivity_alert_hour": -1},  # 到幾點還沒說過話就通知；-1 = 關閉
     "language": "zh-TW",   # 介面／語音／護欄的語言；見 lang/ 目錄（en、zh-CN）
     "active_character": "grandson",
     "characters": {"grandson": {"cosyvoice_spk": "family", "persona": (
@@ -266,6 +270,11 @@ _notify_cfg    = CFG.get("notify", {})
 TELEGRAM_TOKEN = os.environ.get(_notify_cfg.get("telegram_token_env", "TELEGRAM_BOT_TOKEN"), "")
 TELEGRAM_CHAT  = os.environ.get(_notify_cfg.get("telegram_chat_env", "TELEGRAM_CHAT_ID"), "")
 DAILY_SUMMARY_HOUR = _notify_cfg.get("daily_summary_hour", 20)
+# LINE（台灣家人多半用 LINE；LINE Notify 已在 2025-03-31 停止，改用官方帳號的 Messaging API）
+LINE_TOKEN     = os.environ.get(_notify_cfg.get("line_token_env", "LINE_CHANNEL_ACCESS_TOKEN"), "")
+LINE_TO        = os.environ.get(_notify_cfg.get("line_to_env", "LINE_TO"), "")
+# 到這個鐘點，長輩今天還沒跟小幫手說過一句話 → 靜音通知家人看一下。-1 = 關閉
+INACTIVITY_HOUR = _notify_cfg.get("inactivity_alert_hour", -1)
 
 # #4 guard: a typo'd active_character must not crash startup.
 # 語言包的人設優先（英文部署不能用中文人設——模型會用中文回覆英文使用者）
@@ -422,6 +431,100 @@ def guard_reply(s):
     return s, False
 
 
+# ── 家庭事實表：家人寫下的「真的事實」──────────────────────────────────
+# 為什麼不讓模型自己記：4B 的小模型記錯、編造的機率不低，而它說錯一個人名、
+# 一個地方，長輩會拿去對照現實、更混亂。家人寫下來的才是真的，也才測得了。
+# 檔案是 family.yaml（不入庫，含家人隱私），範本見 family.example.yaml，
+# 家人管理台也能直接編輯。
+FAMILY_FILE = os.path.join(SCRIPT_DIR, "family.yaml")
+FAMILY_EXAMPLE = os.path.join(SCRIPT_DIR, "family.example.yaml")
+# 分類照 Memodi 的做法：人、東西放哪、作息、生命故事、近期的事、讓他安心的事
+FAMILY_SECTIONS = (("people", "人物關係"), ("belongings", "東西放哪裡"),
+                   ("routine", "每天的作息"), ("life_story", "他的生命故事"),
+                   ("upcoming", "近期的事"), ("comfort", "讓他安心的事"))
+_FAMILY_LABELS = LANG.get("family_labels") or {}
+_FAMILY_INTRO = LANG.get("family_intro") or (
+    "以下是家人提供、確定為真的事實。只在爺爺問到時拿來回答；不要主動提起，"
+    "不要考他記不記得。這裡沒寫的事你就不知道，不可以自己編")
+# 長輩「在找人」的說法：提到某位已過世的家人，又帶著這些詞，才用家人審定的回答
+_ASK_CUES = tuple(_SAFETY.get("ask_cues") or
+                  ("呢", "在哪", "去哪", "回來", "找", "怎麼沒", "來了沒", "在不在", "叫她", "叫他"))
+family = {}
+
+
+def parse_family(text):
+    """解析並檢查 family.yaml。回 (dict, 錯誤訊息或 None)。"""
+    if yaml is None:
+        return {}, "伺服器沒裝 pyyaml，無法讀家庭事實表"
+    try:
+        d = yaml.safe_load(text or "") or {}
+    except Exception as e:
+        return {}, f"格式有誤（YAML）：{e}"
+    if not isinstance(d, dict):
+        return {}, "最外層要是「分類: 內容」的格式"
+    out = {}
+    for key, _ in FAMILY_SECTIONS:
+        items = d.get(key) or []
+        if not isinstance(items, list) or not all(isinstance(x, (str, int, float)) for x in items):
+            return {}, f"「{key}」底下要是一行一項的清單（每行以 - 開頭）"
+        out[key] = [str(x).strip() for x in items if str(x).strip()]
+    bereavement = []
+    for i, b in enumerate(d.get("bereavement") or [], 1):
+        if not isinstance(b, dict):
+            return {}, f"bereavement 第 {i} 項格式不對"
+        triggers = [str(t).strip() for t in (b.get("triggers") or []) if str(t).strip()]
+        reply = str(b.get("reply") or "").strip()
+        if not triggers or not reply:
+            return {}, f"bereavement 第 {i} 項要有 triggers（怎麼稱呼這個人）和 reply（固定的回答）"
+        if not b.get("approved_by"):
+            return {}, f"bereavement 第 {i} 項要寫 approved_by：是哪位家人決定這樣回答的"
+        bereavement.append({"about": str(b.get("about") or triggers[0]), "triggers": triggers,
+                            "reply": reply, "approved_by": str(b["approved_by"]),
+                            "approved_on": str(b.get("approved_on") or "")})
+    out["bereavement"] = bereavement
+    return out, None
+
+
+def load_family():
+    global family
+    if not os.path.exists(FAMILY_FILE):
+        family = {}
+        return
+    with open(FAMILY_FILE, encoding="utf-8") as f:
+        d, err = parse_family(f.read())
+    if err:
+        print(f"⚠ family.yaml 讀取失敗（先不用）：{err}")
+        family = {}
+        return
+    family = d
+    n = sum(len(family.get(k, [])) for k, _ in FAMILY_SECTIONS)
+    print(f"家庭事實表：{n} 條事實、{len(family['bereavement'])} 則喪親固定回答")
+
+
+def family_prompt():
+    lines = []
+    for key, label in FAMILY_SECTIONS:
+        items = family.get(key) or []
+        if items:
+            lines.append(f"【{_FAMILY_LABELS.get(key, label)}】" + "；".join(items))
+    return ("\n\n（" + _FAMILY_INTRO + "）：\n" + "\n".join(lines)) if lines else ""
+
+
+def bereavement_reply(text):
+    """長輩在找已過世的家人 → 回家人事先審定的那一句，每次都一樣。
+
+    為什麼不交給模型：模型每次編的說法都不同（今天說去市場、明天說去上班），
+    長輩會被前後矛盾的說法搞得更混亂；研究也指出照護上的善意隱瞞一旦重複
+    使用就容易失效，所以要用家人想清楚、決定好的那一句。"""
+    if not family.get("bereavement") or not _mentions(text, _ASK_CUES):
+        return None
+    low = text.lower()
+    for b in family["bereavement"]:
+        if any(t.lower() in low for t in b["triggers"]):
+            return b["reply"]
+    return None
+
+
 def get_system_prompt():
     # Persona comes from the active character (conf.yaml); we only inject the
     # live date/time into its {date_line} slot. Output is identical to before.
@@ -437,7 +540,7 @@ def get_system_prompt():
     if session_summary:
         prompt += ("\n\n（以下是你對爺爺的長期記憶，自然地融入關心即可；"
                    "不要主動提起他說過的話、也不要考他記不記得）：\n" + session_summary)
-    return prompt
+    return prompt + family_prompt()
 
 
 async def edge_tts_synth(text):
@@ -722,25 +825,41 @@ async def _fold_and_summarize(fold_msgs, prev_summary):
 
 
 async def notify_family(text, level="notice"):
-    """Push a message to family via Telegram. Best-effort; no-op if unconfigured.
+    """Push a message to family via Telegram and/or LINE. Best-effort; no-op if unconfigured.
 
     分級的用意：如果每件小事都讓家人的手機響，家人最後會直接關掉通知——那時
     真正的緊急狀況也傳不到。所以只有 urgent（跌倒／胸口／救命）才出聲，
-    其餘用 Telegram 的靜音推播，家人有空再看。
+    其餘用靜音推播，家人有空再看。
     """
-    if not (TELEGRAM_TOKEN and TELEGRAM_CHAT):
-        return
     urgent = (level == "urgent")
-    body = {"chat_id": TELEGRAM_CHAT,
-            "text": ("🚨【緊急】" if urgent else "⚠️【留意】") + text,
-            "disable_notification": not urgent}   # notice → 靜音送達
-    try:
-        await run_in_threadpool(lambda: requests.post(
-            f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage",
-            json=body, timeout=10))
-        print(f"［已通知家人／{level}］{text[:40]}")
-    except Exception as e:
-        print(f"通知家人失敗（忽略）：{e}")
+    msg = ("🚨【緊急】" if urgent else "⚠️【留意】") + text
+    sent = []
+    if TELEGRAM_TOKEN and TELEGRAM_CHAT:
+        body = {"chat_id": TELEGRAM_CHAT, "text": msg,
+                "disable_notification": not urgent}   # notice → 靜音送達
+        try:
+            await run_in_threadpool(lambda: requests.post(
+                f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage",
+                json=body, timeout=10))
+            sent.append("Telegram")
+        except Exception as e:
+            print(f"Telegram 通知失敗（忽略）：{e}")
+    if LINE_TOKEN and LINE_TO:
+        # 免費方案每月推播則數有限：每日摘要與留意通知會吃額度，緊急通知請保留
+        body = {"to": LINE_TO, "messages": [{"type": "text", "text": msg[:5000]}],
+                "notificationDisabled": not urgent}
+        try:
+            r = await run_in_threadpool(lambda: requests.post(
+                "https://api.line.me/v2/bot/message/push", json=body, timeout=10,
+                headers={"Authorization": f"Bearer {LINE_TOKEN}"}))
+            if r.status_code == 200:
+                sent.append("LINE")
+            else:   # 429 = 本月額度用完；401 = 權杖錯
+                print(f"LINE 通知失敗（{r.status_code}）：{r.text[:120]}")
+        except Exception as e:
+            print(f"LINE 通知失敗（忽略）：{e}")
+    if sent:
+        print(f"［已通知家人／{level}／{'+'.join(sent)}］{text[:40]}")
 
 
 def _fire_bg(coro):
@@ -791,6 +910,36 @@ async def daily_summary_loop():
             print(f"每日摘要失敗（忽略）：{e}")
 
 
+def last_heard_ts():
+    """長輩最後一次對小幫手說話的時間（unix 秒）。從「常說的話」紀錄取——它會存檔，
+    重啟也不會忘；沒有任何紀錄就回 None。"""
+    times = [t for g in patterns for t in g.get("times", [])]
+    return max(times) if times else None
+
+
+async def inactivity_loop():
+    """每天 INACTIVITY_HOUR 點檢查一次：今天還沒說過話，就靜音通知家人。
+
+    做法來自 Hyodol 與 OpenCare 的「無活動警報」：長輩不說話，可能只是出門或睡了，
+    也可能是不舒服、或平板沒電——這些都只有家人能去確認。只發「留意」，不出聲。"""
+    if INACTIVITY_HOUR is None or INACTIVITY_HOUR < 0:
+        return
+    while True:
+        now = datetime.now()
+        target = now.replace(hour=INACTIVITY_HOUR, minute=0, second=0, microsecond=0)
+        if target <= now:
+            target += timedelta(days=1)
+        await asyncio.sleep((target - now).total_seconds())
+        try:
+            midnight = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+            last = last_heard_ts()
+            if last is None or last < midnight.timestamp():
+                await notify_family(f"爺爺今天到 {INACTIVITY_HOUR} 點都還沒跟小幫手說過話，"
+                                    f"有空請打個電話或看一下他（也可能只是出門或平板沒電）。")
+        except Exception as e:
+            print(f"無互動檢查失敗（忽略）：{e}")
+
+
 def _advertise_mdns():
     """在區網廣播這台電腦，讓 App 的「自動尋找電腦」不用手打 IP。
     純加分項：裝不了 zeroconf、找不到區網 IP，都只印一行提示、不影響其他任何功能。"""
@@ -825,12 +974,14 @@ async def startup():
     threading.Thread(target=_advertise_mdns, daemon=True).start()
     if not LLM_API_KEY and not LLM_IS_LOCAL:
         print("⚠ 雲端大腦需要金鑰，但沒設定 → LLM 會無法回應")
-    if not (TELEGRAM_TOKEN and TELEGRAM_CHAT):
-        print("（未設定 Telegram，家人通知/每日摘要停用）")
+    if not (TELEGRAM_TOKEN and TELEGRAM_CHAT) and not (LINE_TOKEN and LINE_TO):
+        print("（未設定 Telegram 或 LINE，家人通知/每日摘要停用）")
     load_phrases()
     load_memory()
     load_patterns()
+    load_family()
     _fire_bg(daily_summary_loop())
+    _fire_bg(inactivity_loop())
     print("載入 Whisper...")
     whisper = WhisperModel(WHISPER_SIZE, device=WHISPER_DEVICE, compute_type=WHISPER_CTYPE)
     print("Whisper 就緒")
@@ -1176,6 +1327,72 @@ async def setup_set_voice(audio: UploadFile = File(...), ref_text: str = Form(""
     return {"ok": True, "ref_text": rt, "reloaded": reloaded}
 
 
+@app.post("/setup/revoke-voice")
+async def setup_revoke_voice():
+    """撤回克隆聲音：刪掉參考音、逐字稿、同意紀錄，叫 TTS 重載、清掉快取。
+
+    同意必須撤得回來——捐聲的家人改變心意、或過世後家人決定不再用這個聲音，
+    都應該一鍵就能停。只留一行撤回紀錄（時間＋原參考音的指紋，不含聲音本身），
+    證明「這把聲音在這天停用了」。"""
+    vdir = os.path.join(SCRIPT_DIR, "voices")
+    consent_path = os.path.join(vdir, "active_reference.consent.json")
+    digest = ""
+    try:
+        with open(consent_path, encoding="utf-8") as f:
+            digest = json.load(f).get("ref_sha256", "")
+    except Exception:
+        pass
+    removed = []
+    for p in glob.glob(os.path.join(vdir, "active_reference*")):
+        try:
+            os.remove(p)
+            removed.append(os.path.basename(p))
+        except OSError as e:
+            print(f"撤回時刪不掉 {os.path.basename(p)}：{e}")
+    if not removed:
+        return {"ok": True, "removed": [], "message": "目前沒有設定克隆聲音"}
+    try:
+        with open(os.path.join(vdir, "revocations.log"), "a", encoding="utf-8") as f:
+            f.write(json.dumps({"ts": int(time.time()), "ref_sha256": digest,
+                                "removed": removed}, ensure_ascii=False) + "\n")
+    except Exception:
+        pass
+    try:
+        await run_in_threadpool(lambda: requests.post(
+            COSY_URL.replace("/tts", "/reload-ref"), timeout=30))
+    except Exception:
+        pass
+    tts_cache.clear()
+    print(f"［克隆聲音已撤回］刪除 {len(removed)} 個檔案")
+    return {"ok": True, "removed": removed}
+
+
+@app.get("/setup/family")
+async def setup_get_family():
+    """家庭事實表的原文（沒有就給範本，家人照著改）。"""
+    exists = os.path.exists(FAMILY_FILE)
+    src = FAMILY_FILE if exists else FAMILY_EXAMPLE
+    text = ""
+    if os.path.exists(src):
+        with open(src, encoding="utf-8") as f:
+            text = f.read()
+    return {"exists": exists, "text": text}
+
+
+@app.post("/setup/family")
+async def setup_save_family(text: str = Form("")):
+    if len(text) > 50_000:
+        raise HTTPException(status_code=400, detail="內容太長了（上限五萬字）")
+    d, err = parse_family(text)
+    if err:
+        raise HTTPException(status_code=400, detail=err)
+    with open(FAMILY_FILE, "w", encoding="utf-8") as f:
+        f.write(text)
+    load_family()
+    n = sum(len(d.get(k, [])) for k, _ in FAMILY_SECTIONS)
+    return {"ok": True, "facts": n, "bereavement": len(d["bereavement"])}
+
+
 @app.get("/setup/phrase-audio/{fname}")
 async def setup_phrase_audio(fname: str):
     p = os.path.join(PHRASES_DIR, os.path.basename(fname))
@@ -1302,35 +1519,41 @@ async def interact(request: Request):
     if len(text) < 2:
         return JSONResponse({"type": "no_speech"})
 
-    msgs = [{"role": "system", "content": get_system_prompt()}]
-    msgs.extend(history[-MAX_HISTORY:])
-    msgs.append({"role": "user", "content": text})
+    # 找已過世的家人：用家人審定的那一句，不交給模型臨場編
+    reply = bereavement_reply(text)
+    if reply:
+        print(f"［喪親固定回答］→ {reply}")
+        reply, _ = guard_reply(reply)
+    else:
+        msgs = [{"role": "system", "content": get_system_prompt()}]
+        msgs.extend(history[-MAX_HISTORY:])
+        msgs.append({"role": "user", "content": text})
 
-    body = {"model": LLM_MODEL, "messages": msgs, "stream": False,
-            "temperature": LLM_TEMP, "max_tokens": LLM_MAXTOK}
-    if LLM_NOTHINK:
-        # Disable reasoning. Nemotron-3 accepts this too (verified: reasoning→0,
-        # clean content). Critical: with reasoning ON, its 200-1000-char think
-        # doesn't fit max_tokens=80 → the truncated think LEAKS into content and
-        # 爺爺 hears the model's inner monologue (incl. "as a granddaughter…").
-        body["chat_template_kwargs"] = {"enable_thinking": False}
-    try:
-        r = await run_in_threadpool(lambda: requests.post(
-            f"{LLM_BASE_URL}/chat/completions",
-            headers=({"Authorization": f"Bearer {LLM_API_KEY}"} if LLM_API_KEY else {}),
-            json=body, timeout=LLM_TIMEOUT))
-        r.raise_for_status()
-        reply = (r.json()["choices"][0]["message"].get("content") or "").strip()
-        reply = _sanitize_reply(reply)
-        reply, blocked = guard_reply(reply)
-        if blocked:
-            # 家人該知道模型差點說出死訊或叫長輩出門——這代表 persona 需要檢查
-            print(f"⚠ 已攔截不該說出口的回覆（含死訊或出門邀約），改用安撫語")
-        if not reply:
-            raise ValueError("empty content from LLM")
-    except Exception as e:
-        print(f"MiMo 錯誤：{e}")
-        return JSONResponse({"type": "error", "reply": "不好意思，我現在有點問題，請稍後再說。"})
+        body = {"model": LLM_MODEL, "messages": msgs, "stream": False,
+                "temperature": LLM_TEMP, "max_tokens": LLM_MAXTOK}
+        if LLM_NOTHINK:
+            # Disable reasoning. Nemotron-3 accepts this too (verified: reasoning→0,
+            # clean content). Critical: with reasoning ON, its 200-1000-char think
+            # doesn't fit max_tokens=80 → the truncated think LEAKS into content and
+            # 爺爺 hears the model's inner monologue (incl. "as a granddaughter…").
+            body["chat_template_kwargs"] = {"enable_thinking": False}
+        try:
+            r = await run_in_threadpool(lambda: requests.post(
+                f"{LLM_BASE_URL}/chat/completions",
+                headers=({"Authorization": f"Bearer {LLM_API_KEY}"} if LLM_API_KEY else {}),
+                json=body, timeout=LLM_TIMEOUT))
+            r.raise_for_status()
+            reply = (r.json()["choices"][0]["message"].get("content") or "").strip()
+            reply = _sanitize_reply(reply)
+            reply, blocked = guard_reply(reply)
+            if blocked:
+                # 家人該知道模型差點說出死訊或叫長輩出門——這代表 persona 需要檢查
+                print(f"⚠ 已攔截不該說出口的回覆（含死訊、出門邀約或錢與密碼），改用安撫語")
+            if not reply:
+                raise ValueError("empty content from LLM")
+        except Exception as e:
+            print(f"MiMo 錯誤：{e}")
+            return JSONResponse({"type": "error", "reply": "不好意思，我現在有點問題，請稍後再說。"})
     print(f"回應：{reply}")
 
     # #6: if 爺爺 gave up / closed the tab mid-request, don't record a turn he
@@ -1760,6 +1983,8 @@ a.link{color:#26418f;font-weight:600;text-decoration:none}
     <span>我確認我是這個聲音的<b>本人</b>，或已取得本人同意，僅用於陪伴長輩。</span>
   </label>
   <div id="voiceMsg" class="note" style="display:none"></div>
+  <p class="hint" style="margin-top:14px">捐聲的家人改變心意、或家人決定不再用這個聲音（包括本人過世後），按這裡就會刪掉參考音與同意紀錄，之後改用通用聲音。</p>
+  <button class="ghost sm" onclick="revokeVoice()">🗑 撤回這個聲音</button>
 </div>
 
 <div class="card">
@@ -1797,6 +2022,18 @@ a.link{color:#26418f;font-weight:600;text-decoration:none}
   <p class="hint">爺爺常說的話 → 播放家人的真聲，秒回。每句可上傳一段家人錄音（wav / mp3），上傳後立即生效。綠點=已有錄音。</p>
   <div id="phrases">載入中…</div>
   <div style="margin-top:12px"><button class="ghost sm" onclick="loadPhrases()">🔄 重新整理</button></div>
+</div>
+
+<div class="card">
+  <h2>🏠 家庭事實表</h2>
+  <p class="hint">寫下確定為真的事：家人是誰、東西放哪、作息、他的故事、近期的事、什麼能讓他安心。小幫手只在爺爺問到時才用，不會主動提、也不會考他。<b>沒寫的事它就說不知道</b>，不會亂編。</p>
+  <p class="hint"><b>喪親固定回答</b>（bereavement）：爺爺找已過世的家人時，每次都用你們家決定好的同一句回答，不讓 AI 每次臨場編不同的說法。要寫清楚是誰決定的（approved_by）。</p>
+  <textarea id="familyText" spellcheck="false" style="width:100%;min-height:320px;font-family:ui-monospace,Consolas,monospace;font-size:13px;line-height:1.5;padding:10px;border:1px solid #d5dbe5;border-radius:8px;box-sizing:border-box"></textarea>
+  <div class="field" style="margin-top:10px">
+    <button onclick="saveFamily()" id="famBtn">儲存</button>
+    <span class="muted" id="famState"></span>
+  </div>
+  <div id="famMsg" class="note" style="display:none"></div>
 </div>
 
 <div class="card">
@@ -1994,7 +2231,34 @@ async function setMode(m){
     const d=await (await fetch('/setup/talk-mode',{method:'POST',body:fd})).json(); paintModeBtns(d.talk_mode);
   }catch(e){ alert('設定失敗：'+e); }
 }
-loadStatus(); loadPhrases(); loadHistory(); loadMode(); loadPhotoGrid(); loadPatterns();
+async function revokeVoice(){
+  if(!confirm('確定要撤回目前的克隆聲音嗎？參考音與同意紀錄會被刪除，之後改用通用聲音。'))return;
+  const m=document.getElementById('voiceMsg'); m.style.display='block';
+  try{
+    const d=await (await fetch('/setup/revoke-voice',{method:'POST'})).json();
+    m.textContent = d.removed&&d.removed.length ? '✅ 已撤回，克隆聲音停用。' : (d.message||'目前沒有設定克隆聲音');
+    loadStatus();
+  }catch(e){ m.textContent='撤回失敗：'+e; }
+}
+async function loadFamily(){
+  try{
+    const d=await (await fetch('/setup/family')).json();
+    document.getElementById('familyText').value=d.text||'';
+    document.getElementById('famState').textContent=d.exists?'':'（這是範本，改好按儲存才會生效）';
+  }catch(e){}
+}
+async function saveFamily(){
+  const m=document.getElementById('famMsg'), btn=document.getElementById('famBtn');
+  const fd=new FormData(); fd.append('text',document.getElementById('familyText').value);
+  btn.disabled=true; m.style.display='block'; m.textContent='儲存中…';
+  try{
+    const r=await fetch('/setup/family',{method:'POST',body:fd}); const d=await r.json();
+    m.textContent = r.ok ? `✅ 已儲存：${d.facts} 條事實、${d.bereavement} 則喪親固定回答` : ('✕ '+(d.detail||'儲存失敗'));
+    if(r.ok) document.getElementById('famState').textContent='';
+  }catch(e){ m.textContent='儲存失敗：'+e; }
+  btn.disabled=false;
+}
+loadStatus(); loadPhrases(); loadHistory(); loadMode(); loadPhotoGrid(); loadPatterns(); loadFamily();
 </script>
 </body>
 </html>

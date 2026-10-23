@@ -177,7 +177,7 @@ def test_language_pack_overrides_every_guard_list(lang):
     safety = cw.LANG.get("safety") or {}
     for key in ("never_say", "death_pairs", "safe_fallback", "negation",
                 "urgent_words", "urgent_pairs", "outing_words", "outing_fallback",
-                "money_words", "money_fallback", "scam_words"):
+                "money_words", "money_fallback", "scam_words", "ask_cues"):
         assert safety.get(key), f"lang/{lang}.yaml 的 safety 缺少 {key}"
 
 

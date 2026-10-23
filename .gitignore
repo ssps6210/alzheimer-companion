@@ -91,3 +91,6 @@ PROJECT.md
 
 # 安全閘門的「真模型測試已通過」指紋（各自機器的狀態，不入庫）
 tests/.safety_stamp
+
+# 家庭事實表（家人寫的真實資料，隱私，不入庫；範本見 family.example.yaml）
+family.yaml

@@ -17,5 +17,5 @@ jobs:
       # 只裝 import companion_web 需要的輕量套件；faster-whisper 由測試換成空殼
       - name: Install test dependencies
         run: pip install fastapi uvicorn python-multipart requests numpy pyyaml pytest
-      - name: Run offline guardrail tests (zh-TW, en, zh-CN)
-        run: python -m pytest tests/test_guards.py -v
+      - name: Run offline guardrail and care tests (zh-TW, en, zh-CN)
+        run: python -m pytest tests/test_guards.py tests/test_care.py -v

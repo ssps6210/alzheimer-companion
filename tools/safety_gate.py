@@ -27,7 +27,8 @@ import sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 STAMP = os.path.join(ROOT, "tests", ".safety_stamp")
 
-GUARD_FILES = ("companion_web.py", "tests/test_guards.py")
+GUARD_FILES = ("companion_web.py", "tests/test_guards.py", "tests/test_care.py",
+               "family.example.yaml")
 PERSONA_FILES = ("conf.example.yaml", "tests/safety_cases.yaml")
 
 
@@ -75,7 +76,7 @@ def run_offline_tests():
         print("（沒裝 pytest，略過離線護欄測試：venv\\Scripts\\pip install pytest）",
               file=sys.stderr)
         return None
-    r = subprocess.run([py, "-m", "pytest", "-q", "tests/test_guards.py"],
+    r = subprocess.run([py, "-m", "pytest", "-q", "tests/test_guards.py", "tests/test_care.py"],
                        cwd=ROOT, capture_output=True, text=True)
     if r.returncode != 0:
         tail = "\n".join((r.stdout + r.stderr).strip().splitlines()[-25:])

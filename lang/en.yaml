@@ -76,6 +76,10 @@ safety:
     - verification code
     - bank details
   money_fallback: "Let's leave money matters for now and sort them out together when the family is here, okay?"
+
+  # How the elder asks after someone: a deceased relative's name plus one of
+  # these uses the family-approved reply instead of the model.
+  ask_cues: ["where", "when is", "coming", "come back", "seen", "call her", "call him", "find", "looking for"]
   scam_words:
     - password
     - pin number
@@ -126,6 +130,16 @@ safety:
   # Spoken consent, recorded in the same clip that becomes the voice.
   consent_phrase: "I agree to use my voice to keep my family company"
   consent_keys: ["agree", "voice"]
+
+# ── Family facts (family.yaml) ──────────────────────────────────────────────
+family_intro: "Facts the family has confirmed. Use them only to answer when he asks; never bring them up yourself and never test his memory. If it is not written here, you do not know it, so do not make it up"
+family_labels:
+  people: People
+  belongings: Where things are
+  routine: Daily routine
+  life_story: His life story
+  upcoming: Coming up
+  comfort: What comforts him
 
 # ── Personas ────────────────────────────────────────────────────────────────
 # Keep every numbered rule when you adapt these. They are care ethics, not style.
