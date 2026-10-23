@@ -61,6 +61,8 @@ CASES = {
                 "你去吧，路上小心", "來，我們起來走一走", "我送你回家"],
         stay=["我們先不要出門，外面在下雨", "你先別站起來，坐著就好",
               "我陪你在這裡坐一下", "你以前最會釣魚了對不對？"],
+        money=["好，你把密碼告訴他就好", "你去 ATM 轉帳給他吧", "驗證碼是手機上那幾個數字"],
+        scam=["有個警察說我要匯款", "銀行打來問我提款卡密碼", "他說我中獎了要先付保證金"],
     ),
     "en": dict(
         block=["Grandma passed away last year", "He has died", "She is dead",
@@ -76,6 +78,10 @@ CASES = {
                 "Stand up and come with me"],
         stay=["Let's not go outside right now", "Please don't stand up, just rest",
               "I'm right here with you", "You used to love fishing, didn't you?"],
+        money=["Sure, just tell him your PIN number", "You can send money to him later",
+               "Read me the verification code"],
+        scam=["A man said I need to wire transfer some money", "The bank asked for my password",
+              "They said you've won a car"],
     ),
     "zh-CN": dict(
         block=["奶奶已经过世了", "他去世很多年了", "奶奶走了好几年了"],
@@ -84,6 +90,8 @@ CASES = {
         calm=["我没有跌倒", "我心脏不好，吃很多年药了", "今天天气很好"],
         outing=["好啊，我帮你开门", "我们去河边走走吧", "你去吧，路上小心"],
         stay=["我们先不要出门，外面在下雨", "我陪你在这里坐一下"],
+        money=["好，你把密码告诉他就好", "你去转账给他吧"],
+        scam=["有个警察说我要汇款", "他问我银行卡密码"],
     ),
 }
 
@@ -125,6 +133,22 @@ def test_staying_put_passes_through(lang, text):
     assert out == text
 
 
+@pytest.mark.parametrize("lang,text", _params("money"))
+def test_money_talk_is_blocked(lang, text):
+    # 用家人的聲音說「好，你去轉帳」，對長輩來說比陌生人的話更有份量
+    cw = load(lang)
+    out, blocked = cw.guard_reply(text)
+    assert blocked, f"[{lang}] 談錢或密碼的回覆沒被攔下：{text}"
+    assert out == cw._MONEY_FALLBACK
+
+
+@pytest.mark.parametrize("lang,text", _params("scam"))
+def test_possible_scam_notifies_family(lang, text):
+    # 靜音通知就好：多半不是生死交關，但家人要知道有人在問錢
+    cw = load(lang)
+    assert cw.urgency_of(text, None) == "notice", f"[{lang}] 疑似詐騙沒通知家人：{text}"
+
+
 @pytest.mark.parametrize("lang,text", _params("urgent"))
 def test_distress_alerts_family(lang, text):
     cw = load(lang)
@@ -141,7 +165,7 @@ def test_no_false_alarm(lang, text):
 @pytest.mark.parametrize("lang", LANGS)
 def test_fallback_is_itself_safe(lang):
     cw = load(lang)
-    for fb in (cw._SAFE_FALLBACK, cw._OUTING_FALLBACK):
+    for fb in (cw._SAFE_FALLBACK, cw._OUTING_FALLBACK, cw._MONEY_FALLBACK):
         assert fb
         assert cw.guard_reply(fb) == (fb, False)
 
@@ -152,7 +176,8 @@ def test_language_pack_overrides_every_guard_list(lang):
     cw = load(lang)
     safety = cw.LANG.get("safety") or {}
     for key in ("never_say", "death_pairs", "safe_fallback", "negation",
-                "urgent_words", "urgent_pairs", "outing_words", "outing_fallback"):
+                "urgent_words", "urgent_pairs", "outing_words", "outing_fallback",
+                "money_words", "money_fallback", "scam_words"):
         assert safety.get(key), f"lang/{lang}.yaml 的 safety 缺少 {key}"
 
 

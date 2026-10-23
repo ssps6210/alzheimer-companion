@@ -384,6 +384,21 @@ _OUTING_WORDS = tuple(_SAFETY.get("outing_words") or
                        "起來走", "下床", "站起來"))
 _OUTING_FALLBACK = _SAFETY.get("outing_fallback") or "我們先在這裡坐著，陪我聊聊天好不好？"
 
+# 第三類紅線：錢與密碼。失智長輩是詐騙集團最常鎖定的對象，而這套系統說話用的
+# 是家人的聲音——它的一句「好，你去轉帳」比陌生人的話有份量得多。所以回覆裡
+# 只要談到這些，一律整句換掉，連「好心教他怎麼操作」也不行。不看否定：
+# 「不要跟別人講密碼」被換成同樣意思的固定句，沒有損失。
+_MONEY_WORDS = tuple(_SAFETY.get("money_words") or
+                     ("匯款", "匯錢", "轉帳", "密碼", "提款卡", "金融卡", "信用卡",
+                      "存摺", "驗證碼", "帳號", "ATM", "提款機", "保證金", "監管帳戶"))
+_MONEY_FALLBACK = (_SAFETY.get("money_fallback") or
+                   "錢的事我們先放著，等家人來了再一起處理，好不好？")
+# 長輩「說到」這些時，很可能正在接詐騙電話或被人套話——靜音通知家人留意
+# （跟跌倒不同級：多半不是生死交關，但家人需要知道）。
+SCAM_WORDS = tuple(_SAFETY.get("scam_words") or
+                   ("匯款", "匯錢", "轉帳", "密碼", "提款卡", "金融卡", "驗證碼",
+                    "保證金", "監管帳戶", "中獎", "解除分期", "警察說", "檢察官"))
+
 
 def guard_reply(s):
     """最後一道輸出防線。回 (安全的回覆, 是否被攔下)。"""
@@ -396,6 +411,8 @@ def guard_reply(s):
         return _SAFE_FALLBACK, True
     if _mentions(s, _OUTING_WORDS):
         return _OUTING_FALLBACK, True
+    if any(w.lower() in low for w in _MONEY_WORDS):
+        return _MONEY_FALLBACK, True
     return s, False
 
 
@@ -545,6 +562,9 @@ def urgency_of(text, phrase_hit):
     for pair in URGENT_PAIRS:
         if all(_mentions(text, (w,)) for w in pair):
             return "urgent"
+    # 可能在接詐騙電話：不看否定——「我沒有給他密碼」一樣代表有人在問
+    if any(w.lower() in text.lower() for w in SCAM_WORDS):
+        return "notice"
     if phrase_hit:
         return phrase_hit.get("alert") or None
     return None
@@ -1256,8 +1276,11 @@ async def interact(request: Request):
     # 通報判斷放在固定句「之外」：緊急詞不能因為家人還沒錄那句音檔就漏掉通報。
     level = urgency_of(text, hit)
     if level:
+        scam = any(w.lower() in text.lower() for w in SCAM_WORDS)
         _fire_bg(notify_family(
-            f"爺爺剛說了：「{text}」（{datetime.now():%H:%M}），請留意。", level))
+            f"爺爺剛說了：「{text}」（{datetime.now():%H:%M}），"
+            + ("可能有人在問他錢或密碼，請確認是不是詐騙電話。" if scam else "請留意。"),
+            level))
 
     if hit:
         print(f"［固定句命中］→ {hit['text']}")

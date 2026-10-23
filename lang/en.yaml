@@ -60,6 +60,37 @@ safety:
     - get up and
   outing_fallback: "Let's stay here and sit together for a bit. Will you keep me company?"
 
+  # Money and passwords: never discussed in a reply (scam protection); when the
+  # elder mentions them, family gets a silent heads-up.
+  money_words:
+    - password
+    - pin number
+    - bank account
+    - account number
+    - credit card
+    - debit card
+    - wire transfer
+    - transfer money
+    - send money
+    - gift card
+    - verification code
+    - bank details
+  money_fallback: "Let's leave money matters for now and sort them out together when the family is here, okay?"
+  scam_words:
+    - password
+    - pin number
+    - bank account
+    - account number
+    - credit card
+    - wire transfer
+    - transfer money
+    - send money
+    - gift card
+    - verification code
+    - you've won
+    - prize
+    - the police said
+
   # Negation, so "I did not fall" is not read as a fall.
   # English negation sits further from the keyword than Chinese does
   # ("didn't fall" vs 「沒跌倒」), so the lookbehind window is wider.
