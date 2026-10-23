@@ -51,7 +51,7 @@ skip this.*
 **① A local model — the default. No key, and the conversation stays home.**
 Install Ollama from <https://ollama.com>, then run one line in PowerShell:
 ```
-ollama pull qwen3:4b
+ollama pull qwen3:4b-instruct
 ```
 
 **② A cloud model — more nuanced replies, but the text is sent out.**

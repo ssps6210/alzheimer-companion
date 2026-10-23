@@ -111,7 +111,7 @@ The guardrails aren't only prompt text: [`tests/test_safety.py`](tests/test_safe
 ## 🧠 The AI
 
 **Runs on your own computer by default, and needs no key at all.** Install
-[Ollama](https://ollama.com) (free), then `ollama pull qwen3:4b` — with that,
+[Ollama](https://ollama.com) (free), then `ollama pull qwen3:4b-instruct` — with that,
 not even the text of the conversation leaves the machine.
 
 | | Local model (default) | Cloud model |

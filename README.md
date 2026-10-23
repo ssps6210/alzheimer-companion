@@ -116,7 +116,7 @@
 ## 🧠 大腦 · The AI
 
 **預設跑在你自己的電腦上，不需要任何金鑰。** 裝 [Ollama](https://ollama.com)（免費）之後
-`ollama pull qwen3:4b`，這樣連對話的文字都不會離開這台機器。
+`ollama pull qwen3:4b-instruct`，這樣連對話的文字都不會離開這台機器。
 
 | | 本機模型（預設） | 雲端模型 |
 |---|---|---|

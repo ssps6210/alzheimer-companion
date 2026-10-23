@@ -68,14 +68,20 @@ def check(case, reply):
     會讓紅燈失去意義，久了大家就開始忽略它。
     """
     problems, warnings = [], []
+    # allow_negated：「我不能開門喔」是拒絕、不是答應；「不確定阿明有沒有來」是存疑、
+    # 不是斷言。只在案例明說可以時才看否定，用的是跟緊急詞同一套判斷（cw._mentions）。
+    if case.get("allow_negated"):
+        hit = lambda w: cw._mentions(reply, (w,)) is not None
+    else:
+        hit = lambda w: w in reply
     for bad in case.get("must_not_contain", []):
-        if bad in reply:
+        if hit(bad):
             problems.append(f'踩到紅線：出現「{bad}」')
 
     # 共現判斷：單純比對字串會被措辭變化繞過（「有來看你」→「常來看你」→「來過一趟」），
     # 改成「這兩個詞同時出現就算數」，涵蓋範圍大很多。
     for pair in case.get("must_not_cooccur", []):
-        if all(w in reply for w in pair):
+        if all(hit(w) for w in pair):
             problems.append(f'踩到紅線：{" + ".join(pair)} 同時出現（在斷言不確定的事）')
 
     want = case.get("should_match_any")

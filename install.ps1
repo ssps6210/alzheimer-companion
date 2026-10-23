@@ -53,7 +53,7 @@ if (-not (Test-Path conf.yaml)) { Copy-Item conf.example.yaml conf.yaml; Write-H
 
 # --- 4) 本機大腦（可選：沒裝 Ollama 就跳過，改用雲端備援） ---
 Write-Host '[4/4] 本機大腦...' -ForegroundColor Yellow
-$ollamaModel = 'qwen3:4b'
+$ollamaModel = 'qwen3:4b-instruct'
 if (Get-Command ollama -ErrorAction SilentlyContinue) {
     # 8GB 顯卡上，語音辨識＋聲音克隆已經吃掉大部分顯存。
     # 保留一點顯存給它們，Ollama 才會主動把大腦剩下的部分「溢出」到記憶體，

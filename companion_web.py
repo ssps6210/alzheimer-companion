@@ -123,7 +123,7 @@ DEFAULTS = {
               "hotwords": []},   # 家人稱呼、地名、藥名：讓辨識偏向這些詞
     # 預設用「本機模型」：不需要任何金鑰，對話文字也不會離開這台電腦。
     # 連不上本機模型時，才退到雲端備援（要填自己的免費金鑰）。
-    "llm":   {"base_url": "http://localhost:11434/v1", "model": "qwen3:4b",
+    "llm":   {"base_url": "http://localhost:11434/v1", "model": "qwen3:4b-instruct",
               "api_key_env": "", "temperature": 0.7, "max_tokens": 150,
               "timeout": 25, "disable_thinking": True,
               "fallback_base_url": "https://integrate.api.nvidia.com/v1",
@@ -232,6 +232,11 @@ def _resolve_llm(cfg):
     key = os.environ.get(cfg.get("api_key_env") or "", "") if cfg.get("api_key_env") else ""
     is_local = "localhost" in base or "127.0.0.1" in base
 
+    if is_local and model == "qwen3:4b":
+        # Ollama 的 qwen3:4b 現在指向只會思考的 2507 版：enable_thinking=false 對它無效，
+        # max_tokens 全耗在推理，回覆是空的（2026-10 在實機上量到 11 題全空）
+        print("⚠ conf.yaml 的 llm.model 是 qwen3:4b，這個版本只會思考、回覆會是空的。\n"
+              "  請改成 qwen3:4b-instruct，並 `ollama pull qwen3:4b-instruct`")
     if is_local:
         try:                      # 本機模型有在跑嗎？（Ollama 等 OpenAI 相容端點）
             requests.get(base.rstrip("/").rsplit("/v1", 1)[0] + "/api/tags", timeout=2)
