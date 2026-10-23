@@ -53,10 +53,14 @@ CASES = {
     "zh-TW": dict(
         block=["阿嬤已經過世了", "你太太去世很多年了", "她往生了喔",
                "阿嬤走了好幾年了", "他走了，不會回來了"],
-        allow=["爸爸上班走了，晚上就回來", "我們走了啦，去公園散步",
+        allow=["爸爸上班走了，晚上就回來", "阿公剛走了一圈回來，累不累？",
                "阿嬤去市場了，等一下就回來", "大家都很想你喔"],
         urgent=["我跌倒了", "救命啊", "胸口好悶", "心臟很痛", "我站不起來"],
         calm=["我沒有跌倒", "我沒跌倒啦", "我心臟不好，吃很多年藥了", "今天天氣很好"],
+        outing=["好啊，我幫你開門", "我們去河邊走走好不好？", "我帶你出去散步",
+                "你去吧，路上小心", "來，我們起來走一走", "我送你回家"],
+        stay=["我們先不要出門，外面在下雨", "你先別站起來，坐著就好",
+              "我陪你在這裡坐一下", "你以前最會釣魚了對不對？"],
     ),
     "en": dict(
         block=["Grandma passed away last year", "He has died", "She is dead",
@@ -67,12 +71,19 @@ CASES = {
                 "Call an ambulance", "I can't get up"],
         calm=["I didn't fall", "I never fell down", "My chest doesn't hurt",
               "I can breathe fine now", "I've had a heart condition for years"],
+        outing=["Sure, I'll open the door for you", "Let's go to the river together",
+                "Okay, now let's go outside", "I know, let's go for a walk",
+                "Stand up and come with me"],
+        stay=["Let's not go outside right now", "Please don't stand up, just rest",
+              "I'm right here with you", "You used to love fishing, didn't you?"],
     ),
     "zh-CN": dict(
         block=["奶奶已经过世了", "他去世很多年了", "奶奶走了好几年了"],
         allow=["爸爸上班走了，晚上就回来", "奶奶去菜市场了，一会儿就回来"],
         urgent=["我跌倒了", "救命", "胸口好闷", "心脏很痛"],
         calm=["我没有跌倒", "我心脏不好，吃很多年药了", "今天天气很好"],
+        outing=["好啊，我帮你开门", "我们去河边走走吧", "你去吧，路上小心"],
+        stay=["我们先不要出门，外面在下雨", "我陪你在这里坐一下"],
     ),
 }
 
@@ -97,6 +108,23 @@ def test_gentle_reply_passes_through(lang, text):
     assert out == text
 
 
+@pytest.mark.parametrize("lang,text", _params("outing"))
+def test_outing_invitation_is_blocked(lang, text):
+    # 失智長輩會把「我們去河邊走走」當真，自己走出去——走失、跌倒都可能
+    cw = load(lang)
+    out, blocked = cw.guard_reply(text)
+    assert blocked, f"[{lang}] 叫長輩出門／動身的話沒被攔下：{text}"
+    assert out == cw._OUTING_FALLBACK
+
+
+@pytest.mark.parametrize("lang,text", _params("stay"))
+def test_staying_put_passes_through(lang, text):
+    cw = load(lang)
+    out, blocked = cw.guard_reply(text)
+    assert not blocked, f"[{lang}] 勸長輩留下的回覆被誤攔：{text}"
+    assert out == text
+
+
 @pytest.mark.parametrize("lang,text", _params("urgent"))
 def test_distress_alerts_family(lang, text):
     cw = load(lang)
@@ -113,8 +141,9 @@ def test_no_false_alarm(lang, text):
 @pytest.mark.parametrize("lang", LANGS)
 def test_fallback_is_itself_safe(lang):
     cw = load(lang)
-    assert cw._SAFE_FALLBACK
-    assert cw.guard_reply(cw._SAFE_FALLBACK) == (cw._SAFE_FALLBACK, False)
+    for fb in (cw._SAFE_FALLBACK, cw._OUTING_FALLBACK):
+        assert fb
+        assert cw.guard_reply(fb) == (fb, False)
 
 
 @pytest.mark.parametrize("lang", ["en", "zh-CN"])
@@ -123,7 +152,7 @@ def test_language_pack_overrides_every_guard_list(lang):
     cw = load(lang)
     safety = cw.LANG.get("safety") or {}
     for key in ("never_say", "death_pairs", "safe_fallback", "negation",
-                "urgent_words", "urgent_pairs"):
+                "urgent_words", "urgent_pairs", "outing_words", "outing_fallback"):
         assert safety.get(key), f"lang/{lang}.yaml 的 safety 缺少 {key}"
 
 

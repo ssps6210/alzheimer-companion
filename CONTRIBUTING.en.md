@@ -45,7 +45,7 @@ roughly 2 times in 5 at temperature 0.7, which is why the never-say category has
 a deterministic backstop in `guard_reply()`. Use `--repeat 5` when judging
 whether a persona change actually holds.
 
-The defences that do not depend on the model (`guard_reply` for death reveals,
+The defences that do not depend on the model (`guard_reply` for death reveals and invitations to go out,
 `urgency_of` for alerting family) have offline tests too, run once per language
 pack on every push in CI. To run them locally before pushing:
 

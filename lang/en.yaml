@@ -38,6 +38,28 @@ safety:
     - ["left us", "long time"]
   safe_fallback: "Everyone is thinking of you. Let me keep you company for now."
 
+  # Replies that invite the elder to leave or get moving (wandering, fall risk).
+  # Negated ones pass: "let's not go outside" is exactly the reply we want.
+  outing_words:
+    - open the door
+    - go outside
+    - go out for
+    - go for a walk
+    - take a walk
+    - let's go
+    - i'll take you
+    - i will take you
+    - take you home
+    - go to the river
+    - go to the park
+    - go to the beach
+    - come with me
+    - come find me
+    - get out of bed
+    - stand up
+    - get up and
+  outing_fallback: "Let's stay here and sit together for a bit. Will you keep me company?"
+
   # Negation, so "I did not fall" is not read as a fall.
   # English negation sits further from the keyword than Chinese does
   # ("didn't fall" vs 「沒跌倒」), so the lookbehind window is wider.

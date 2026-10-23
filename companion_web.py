@@ -372,6 +372,18 @@ _DEATH_PAIRS = tuple(tuple(p) for p in (_SAFETY.get("death_pairs") or
 # 不帶稱呼——每個家庭的叫法不同（爺爺／阿公／爸），寫死會在攔截時露出破綻
 _SAFE_FALLBACK = _SAFETY.get("safe_fallback") or "大家都很惦記你喔。我先陪著你好不好？"
 
+# 第二類紅線：叫長輩出門、動身的話。韓國 Hyodol 陪伴娃娃出過事——失智長輩把它的
+# 一句話當真，自己走到溪邊。persona 第 14 條已經叫模型別答應，但跟死訊一樣，
+# 靠 prompt 是機率性的，走失或跌倒一次就太多。被否定的不算（「先不要出門」
+# 「別站起來」正是我們想要的回覆），所以用跟緊急詞同一套否定判斷 _mentions。
+_OUTING_WORDS = tuple(_SAFETY.get("outing_words") or
+                      ("開門", "出門", "出去走走", "出去散步", "去散步", "出去逛逛",
+                       "去外面", "到外面", "我帶你去", "我帶你出去", "我送你回家",
+                       "你去吧", "快去", "去河邊", "去溪邊", "去海邊", "去公園",
+                       "我們走吧", "一起走吧", "跟我來", "來找我",
+                       "起來走", "下床", "站起來"))
+_OUTING_FALLBACK = _SAFETY.get("outing_fallback") or "我們先在這裡坐著，陪我聊聊天好不好？"
+
 
 def guard_reply(s):
     """最後一道輸出防線。回 (安全的回覆, 是否被攔下)。"""
@@ -382,6 +394,8 @@ def guard_reply(s):
         return _SAFE_FALLBACK, True
     if any(all(w.lower() in low for w in pair) for pair in _DEATH_PAIRS):
         return _SAFE_FALLBACK, True
+    if _mentions(s, _OUTING_WORDS):
+        return _OUTING_FALLBACK, True
     return s, False
 
 
@@ -472,6 +486,15 @@ _NEGATION = tuple(_SAFETY.get("negation") or ("不", "沒", "別", "未", "甭")
 # 中文的否定詞緊貼關鍵詞（「沒跌倒」），英文隔得遠（"didn't fall"）→ 回看視窗可調
 _NEG_WINDOW = int(_SAFETY.get("negation_window", 2))
 
+def _negates(nw, before):
+    """否定詞是否出現在 before 裡。英文字要整字比對：「no」不能算進 now / know，
+    否則 "Okay, now let's go outside" 會被當成否定而放行。"""
+    nw = nw.lower()
+    if nw.isascii() and nw.isalpha():
+        return re.search(rf"\b{re.escape(nw)}\b", before) is not None
+    return nw in before
+
+
 def _mentions(text, words):
     """text 是否提到 words 之一（且不是被否定的）。跟 match_phrase 用同一套否定判斷。
 
@@ -484,7 +507,7 @@ def _mentions(text, words):
         i = low.find(tl)
         while i != -1:
             before = low[max(0, i - _NEG_WINDOW):i]
-            if not any(nw.lower() in before for nw in _NEGATION):
+            if not any(_negates(nw, before) for nw in _NEGATION):
                 return t
             i = low.find(tl, i + 1)
     return None
@@ -1267,8 +1290,8 @@ async def interact(request: Request):
         reply = _sanitize_reply(reply)
         reply, blocked = guard_reply(reply)
         if blocked:
-            # 家人該知道模型差點說出死訊——這代表 persona 需要檢查
-            print(f"⚠ 已攔截不該說出口的回覆（原內容含死訊字眼），改用安撫語")
+            # 家人該知道模型差點說出死訊或叫長輩出門——這代表 persona 需要檢查
+            print(f"⚠ 已攔截不該說出口的回覆（含死訊或出門邀約），改用安撫語")
         if not reply:
             raise ValueError("empty content from LLM")
     except Exception as e:
