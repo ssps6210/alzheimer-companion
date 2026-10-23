@@ -44,6 +44,12 @@ venv\Scripts\pip install pytest
 venv\Scripts\python.exe -m pytest tests\test_guards.py
 ```
 
+**commit 前的安全閘門。** 改到護欄程式或語言包，`tools/safety_gate.py` 會先跑上面的離線測試；
+改到人設、語言包或 `tests/safety_cases.yaml`，還要求 `test_safety.py` 對這份內容全綠跑過
+（全過時會自動記下指紋）。用 Claude Code 開發時，`.claude/settings.json` 已經掛好；
+一般 git 要自己開一次：`git config core.hooksPath .githooks`。真的沒有模型可跑時，
+`SKIP_LIVE_SAFETY=1` 可以放行，但請在 PR 寫明真模型測試還沒跑。
+
 **3. 同意閘門與浮水印預設保持開啟**
 聲音克隆是雙面刃。設定音色需要本人口說同意、生成語音會打上 AI 浮水印，
 這兩者的**預設值必須是開啟**。可以提供關閉的選項（`CONSENT_REQUIRED=0`、

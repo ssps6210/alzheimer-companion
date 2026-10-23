@@ -47,7 +47,11 @@ whether a persona change actually holds.
 
 The defences that do not depend on the model (`guard_reply` for death reveals and invitations to go out,
 `urgency_of` for alerting family) have offline tests too, run once per language
-pack on every push in CI. To run them locally before pushing:
+pack on every push in CI. `tools/safety_gate.py` runs them before a commit that
+touches the guards or a language pack, and also requires `test_safety.py` to have
+passed on the current persona content (Claude Code: wired in `.claude/settings.json`;
+plain git: `git config core.hooksPath .githooks`; `SKIP_LIVE_SAFETY=1` when no model
+can run). To run them locally before pushing:
 
 ```bash
 venv\Scripts\pip install pytest

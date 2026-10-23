@@ -164,7 +164,8 @@ emergency response system.**
 
 The "notify family when they sound unwell" feature is a best-effort reminder. It
 fails if the machine is off or offline, if nothing is said, or if speech is
-misheard. **In an emergency, call your local emergency number** — and please do
+misheard, and because it matches keywords, a differently worded sentence can
+slip past it. **In an emergency, call your local emergency number** — and please do
 not reduce existing care arrangements because this is installed.
 
 You must have the consent of the person whose voice you clone. Using it for
@@ -176,3 +177,8 @@ using the project means you accept them.
 ## 📄 License
 
 [MIT](LICENSE) — use, modify and distribute freely. Elder-care and other non-profit use especially welcome.
+
+> The code is MIT, but the models it downloads carry their own licences. **The XTTS-v2
+> weights used by the CPU version are under the Coqui Public Model License: non-commercial
+> only** (home care for your own family is fine). For a paid service, use the GPU version
+> with Qwen3-TTS and check every model's licence yourself.
