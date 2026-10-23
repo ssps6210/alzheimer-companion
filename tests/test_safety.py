@@ -162,11 +162,16 @@ def main():
         print("修好之前不要合併——這些規則是保護失智長輩的最後一道防線。")
     if errored and not failed:
         print("\n有案例因為 API 問題沒測到，請稍後重跑確認（這不代表護欄有問題）。")
-    if not failed and not errored and not only:
-        # 整份全綠才蓋章：tools/safety_gate.py 在 commit 前比對這個指紋，
-        # 人設或情境改了卻沒重跑，就會被擋下來
-        sys.path.insert(0, os.path.join(os.path.dirname(CASES_FILE), "..", "tools"))
-        import safety_gate
+    # 整份全綠才蓋章：tools/safety_gate.py 在 commit 前比對這個指紋，
+    # 人設或情境改了卻沒重跑，就會被擋下來。之後任何一次有失敗或測不到，
+    # 就把章撕掉——一次全綠之後再跑出紅燈，章不能還說「通過」。
+    sys.path.insert(0, os.path.join(os.path.dirname(CASES_FILE), "..", "tools"))
+    import safety_gate
+    if failed or errored:
+        if os.path.exists(safety_gate.STAMP):
+            os.remove(safety_gate.STAMP)
+            print("\n✗ 已撤銷先前的通過紀錄（這次沒有全綠）")
+    elif not only:
         with open(safety_gate.STAMP, "w", encoding="utf-8") as f:
             f.write(safety_gate.persona_fingerprint())
         print("\n✓ 已記錄這份人設通過測試（commit 前的安全閘門會比對）")
