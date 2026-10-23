@@ -88,3 +88,6 @@ android/.idea/
 # 而遲早會忘記審查一次。這個 repo 至今找到的每一次外洩都出自這類檔案。
 # 對外要的東西另有專門文件：README / docs/architecture.md / CONTRIBUTING / DISCLAIMER。
 PROJECT.md
+
+# 安全閘門的「真模型測試已通過」指紋（各自機器的狀態，不入庫）
+tests/.safety_stamp

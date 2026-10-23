@@ -1,0 +1,3 @@
+#!/bin/sh
+# 改到護欄或人設就先過測試（見 tools/safety_gate.py）。啟用：git config core.hooksPath .githooks
+exec python tools/safety_gate.py --git
