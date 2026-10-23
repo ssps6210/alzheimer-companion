@@ -31,9 +31,18 @@ python tools/privacy_scan.py
 venv\Scripts\python.exe tests\test_safety.py
 ```
 
-這些測試會用真實 LLM 跑九個高風險情境（需要你自己的 API 金鑰，會有少量費用）。
+這些測試會用真實 LLM 跑九個高風險情境（預設用本機 Ollama，免金鑰；若改用雲端大腦，
+需要你自己的 API 金鑰，會有少量費用）。
 測試曾經真的抓到模型憑空捏造一整段「某某昨天有來看你」的探視情節——這種回覆
 會讓長輩拿去和現實對照，造成更深的混亂。**紅燈就不要合併。**
+
+不靠模型的那幾道防線（攔截死訊的 `guard_reply`、通報家人的 `urgency_of`）另有離線測試，
+三個語言包各跑一輪，每次 push 都在 CI 自動跑。改關鍵詞或語言包時本機也可以先跑：
+
+```bash
+venv\Scripts\pip install pytest
+venv\Scripts\python.exe -m pytest tests\test_guards.py
+```
 
 **3. 同意閘門與浮水印預設保持開啟**
 聲音克隆是雙面刃。設定音色需要本人口說同意、生成語音會打上 AI 浮水印，
@@ -55,6 +64,7 @@ powershell -ExecutionPolicy Bypass -File install_cpu.ps1  # 沒有顯卡
 
 - [ ] `python tools/privacy_scan.py` 通過
 - [ ] 改過 persona / 固定句 / LLM 設定 → `tests\test_safety.py` 全綠
+- [ ] 改過護欄關鍵詞或 `lang/` → `pytest tests\test_guards.py` 全綠（CI 也會跑）
 - [ ] 改過 `companion_web.py` → `python -m py_compile companion_web.py` 通過
 - [ ] 改過 Android → 讓 CI build 過（push 後看 Actions）
 - [ ] 說明「為什麼」，不只是「改了什麼」

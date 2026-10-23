@@ -52,6 +52,9 @@ safety:
     - help me
     - can't breathe
     - cannot breathe
+    # Not a ["breathe", "can"] pair: "can" also sits inside "I can breathe fine".
+    - hard to breathe
+    - trouble breathing
     - chest hurts
     - chest pain
     - my heart hurts
@@ -66,7 +69,6 @@ safety:
     - ["chest", "hurt"]
     - ["chest", "pain"]
     - ["heart", "hurt"]
-    - ["breathe", "can"]
 
   # Spoken consent, recorded in the same clip that becomes the voice.
   consent_phrase: "I agree to use my voice to keep my family company"

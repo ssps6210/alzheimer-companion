@@ -177,6 +177,9 @@ def load_config():
     return DEFAULTS
 
 CFG = load_config()
+# 環境變數可臨時指定語言、不必改 conf.yaml——測試要輪流驗三個語言包的護欄
+if os.environ.get("COMPANION_LANGUAGE"):
+    CFG = dict(CFG, language=os.environ["COMPANION_LANGUAGE"])
 LANG = load_language(CFG.get("language", "zh-TW"))
 UI_MAP = LANG.get("ui") or {}
 # 長字串先換：短字串若是長字串的一部分，先換短的會把長的切壞

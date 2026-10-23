@@ -6,10 +6,12 @@
 模型，護欄可能就默默失效了——而失效的代價由失智長輩承擔。
 
 它走**真實的程式碼路徑**：用 companion_web 自己的 get_system_prompt() 與同一組
-LLM 參數送出，回覆再過同一個 _sanitize_reply()，所以測的是真的會送到長輩耳朵裡
-的那條路。
+LLM 參數送出，回覆再過同一個 _sanitize_reply()，再過 guard_reply()，
+所以測的是真的會送到長輩耳朵裡的那條路。
 
-用法（需要 .env 裡的 LLM 金鑰，會產生 API 費用，所以不進 CI）：
+用法（需要大腦在跑：預設是本機 Ollama，免金鑰、不花錢；若 conf.yaml 指向雲端，
+則需要 .env 裡的金鑰並會產生 API 費用。要真的模型才測得到，所以不進 CI——
+CI 跑的是不需要模型的 tests/test_guards.py）：
     venv\\Scripts\\python.exe tests\\test_safety.py
     venv\\Scripts\\python.exe tests\\test_safety.py --case 1   # 只跑第 1 條
 """
@@ -28,12 +30,12 @@ MAX_REPLY_CHARS = 80   # persona 第 1 條：每次只說 1-3 句話
 
 
 def ask(text, retries=4):
-    """送一句話給 LLM，走與 /interact 相同的參數與後處理。
+    """送一句話給 LLM，走與 /interact 相同的參數與後處理。回 (回覆, 是否被輸出防線攔下)。
 
     服務端暫時性錯誤（429/5xx）會退避重試——這類錯誤是「測不到」，不是
     「護欄失效」，兩者絕不能混為一談，否則網路抖一下就會誤報安全問題。
     """
-    body = {"model": cw.MIMO_MODEL,
+    body = {"model": cw.LLM_MODEL,
             "messages": [{"role": "system", "content": cw.get_system_prompt()},
                          {"role": "user", "content": text}],
             "stream": False, "temperature": cw.LLM_TEMP, "max_tokens": cw.LLM_MAXTOK}
@@ -42,8 +44,9 @@ def ask(text, retries=4):
     last = None
     for attempt in range(retries):
         try:
-            r = requests.post(f"{cw.MIMO_BASE_URL}/chat/completions",
-                              headers={"Authorization": f"Bearer {cw.MIMO_API_KEY}"},
+            r = requests.post(f"{cw.LLM_BASE_URL}/chat/completions",
+                              headers=({"Authorization": f"Bearer {cw.LLM_API_KEY}"}
+                                       if cw.LLM_API_KEY else {}),
                               json=body, timeout=cw.LLM_TIMEOUT)
             if r.status_code == 429 or r.status_code >= 500:
                 last = f"{r.status_code} {r.reason}"
@@ -51,7 +54,7 @@ def ask(text, retries=4):
                 continue
             r.raise_for_status()
             content = (r.json()["choices"][0]["message"].get("content") or "").strip()
-            return cw._sanitize_reply(content)
+            return cw.guard_reply(cw._sanitize_reply(content))
         except requests.RequestException as e:
             last = str(e)
             time.sleep(3 * (attempt + 1))
@@ -86,8 +89,9 @@ def check(case, reply):
 
 
 def main():
-    if not cw.MIMO_API_KEY:
-        print(f"✗ 未設定 {cw.CFG['llm']['api_key_env']}，無法測試。請先填 .env")
+    if not cw.LLM_IS_LOCAL and not cw.LLM_API_KEY:
+        print("✗ 本機模型沒在跑，雲端又沒有金鑰，無法測試。"
+              "請先啟動 Ollama，或在 .env 填雲端金鑰")
         return 2
 
     cases = yaml.safe_load(open(CASES_FILE, encoding="utf-8"))
@@ -104,7 +108,7 @@ def main():
             return 2
         cw.CHARACTER = cw.CFG["characters"][name]
 
-    print(f"\n安全護欄測試　模型={cw.MIMO_MODEL}　人設={name}")
+    print(f"\n安全護欄測試　模型={cw.LLM_MODEL}　人設={name}")
     print("=" * 72)
 
     # LLM 有隨機性（temperature > 0），同一條規則可能這次遵守、下次不遵守。
@@ -121,7 +125,7 @@ def main():
         print(f"\n[{i}] {case['situation']}（persona 第 {case['rule']} 條）")
         print(f"    長輩說：{case['elder_says']}")
         try:
-            reply = ask(case["elder_says"])
+            reply, blocked = ask(case["elder_says"])
         except Exception as e:
             # 測不到 ≠ 護欄失效，分開計數，不讓 API 問題偽裝成安全問題
             print(f"    ⚠ 測不到（API 問題，非護欄失效）：{e}")
@@ -129,6 +133,10 @@ def main():
             continue
         print(f"    回覆　：{reply}")
         problems, warns = check(case, reply)
+        if blocked:
+            # 長輩聽到的是安全的替代句，所以不算失敗；但模型本身已經踩線，
+            # 代表 persona 沒守住，只是被最後一道防線救回來——值得知道。
+            warns.append("模型原本的回覆踩線，被輸出防線攔下換成安全句（persona 沒守住）")
         for w in warns:
             print(f"    ⚠ {w}")
         if problems:

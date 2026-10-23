@@ -1,0 +1,21 @@
+name: Guardrail tests
+
+# 不靠模型的護欄（攔截死訊、通報家人、清掉會被念出來的符號）每次 push 都驗一次。
+# 測模型本身守不守 persona 的 tests/test_safety.py 需要真的大腦，不在這裡跑。
+on:
+  push:
+  pull_request:
+
+jobs:
+  guards:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      # 只裝 import companion_web 需要的輕量套件；faster-whisper 由測試換成空殼
+      - name: Install test dependencies
+        run: pip install fastapi uvicorn python-multipart requests numpy pyyaml pytest
+      - name: Run offline guardrail tests (zh-TW, en, zh-CN)
+        run: python -m pytest tests/test_guards.py -v

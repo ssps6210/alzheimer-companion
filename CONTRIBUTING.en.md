@@ -34,8 +34,8 @@ touches a persona must run the safety suite and include the result:**
 venv\Scripts\python.exe tests\test_safety.py
 ```
 
-It runs nine high-risk scenarios against a real model (needs your own API key;
-it costs a little). The suite once caught the model inventing an entire visit —
+It runs nine high-risk scenarios against a real model (by default the local
+Ollama one, no key needed; a cloud model needs your own API key and costs a little). The suite once caught the model inventing an entire visit —
 "A-ming came to see you yesterday, he brought…" — exactly the fabrication rule 11
 forbids, and the kind of thing an elder will try to reconcile with reality.
 **Red means do not merge.**
@@ -44,6 +44,15 @@ Guardrails are also probabilistic. Even the best-written persona fabricates
 roughly 2 times in 5 at temperature 0.7, which is why the never-say category has
 a deterministic backstop in `guard_reply()`. Use `--repeat 5` when judging
 whether a persona change actually holds.
+
+The defences that do not depend on the model (`guard_reply` for death reveals,
+`urgency_of` for alerting family) have offline tests too, run once per language
+pack on every push in CI. To run them locally before pushing:
+
+```bash
+venv\Scripts\pip install pytest
+venv\Scripts\python.exe -m pytest tests\test_guards.py
+```
 
 **3. Consent and watermarking stay on by default**
 
@@ -67,6 +76,7 @@ Architecture and what each service does: [docs/architecture.md](docs/architectur
 
 - [ ] `python tools/privacy_scan.py` passes
 - [ ] Touched a persona, fixed phrases or LLM settings → `tests\test_safety.py` green
+- [ ] Touched guardrail keywords or `lang/` → `pytest tests\test_guards.py` green (CI runs it too)
 - [ ] Touched `companion_web.py` → `python -m py_compile companion_web.py` passes
 - [ ] Touched Android → the CI build passes (check Actions after pushing)
 - [ ] Explain **why**, not only what changed
