@@ -116,7 +116,10 @@ except ImportError:
     yaml = None
 
 DEFAULTS = {
-    "asr":   {"model": "medium", "device": "cuda", "compute_type": "float16", "language": "zh"},
+    "asr":   {"model": "medium", "device": "cuda", "compute_type": "float16", "language": "zh",
+              # 長輩說話慢、句中會停頓想字：400ms 的靜音就切句，常把一句話切成兩半
+              "vad_min_silence_ms": 1000, "beam_size": 5,
+              "hotwords": []},   # 家人稱呼、地名、藥名：讓辨識偏向這些詞
     # 預設用「本機模型」：不需要任何金鑰，對話文字也不會離開這台電腦。
     # 連不上本機模型時，才退到雲端備援（要填自己的免費金鑰）。
     "llm":   {"base_url": "http://localhost:11434/v1", "model": "qwen3:4b",
@@ -212,6 +215,9 @@ WHISPER_SIZE   = CFG["asr"]["model"]
 WHISPER_DEVICE = CFG["asr"]["device"]
 WHISPER_CTYPE  = CFG["asr"]["compute_type"]
 ASR_LANG       = LANG.get("asr_language") or CFG["asr"]["language"]
+ASR_MIN_SILENCE_MS = int(CFG["asr"].get("vad_min_silence_ms", 1000))
+ASR_BEAM       = int(CFG["asr"].get("beam_size", 5))
+ASR_HOTWORDS   = " ".join(str(w) for w in (CFG["asr"].get("hotwords") or []) if w)
 def _resolve_llm(cfg):
     """決定這次用哪個大腦。回 (base_url, model, api_key, 是否本機)。
 
@@ -1253,10 +1259,15 @@ async def interact(request: Request):
     # Whisper is blocking/CPU-GPU heavy; run off the event loop so /health and
     # other requests stay responsive while transcribing.
     def _transcribe():
+        kw = {}
+        if ASR_HOTWORDS:
+            kw["hotwords"] = ASR_HOTWORDS
         segments, _ = whisper.transcribe(
-            audio, beam_size=5, language=ASR_LANG,
+            audio, beam_size=ASR_BEAM, language=ASR_LANG,
             vad_filter=True,
-            vad_parameters={"min_silence_duration_ms": 400}
+            vad_parameters={"min_silence_duration_ms": ASR_MIN_SILENCE_MS},
+            # 每次只有一句話，不需要拿前文當提示；拿了反而容易一路幻聽下去
+            condition_on_previous_text=False, **kw
         )
         return "".join(seg.text for seg in segments).strip()
 

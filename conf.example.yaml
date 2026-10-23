@@ -15,6 +15,15 @@ asr:                          # 語音辨識（STT）
   device: cuda
   compute_type: float16
   language: zh
+  # ── 長輩講台語？換成聯發科 Breeze-ASR-26（Apache-2.0，台語＋華語混講）──
+  # 聽台語、寫成華語漢字（例如「食飽未」→「吃飽了沒」），大腦照常看得懂。
+  # 首次啟動會自動下載約 3GB。顯卡版顯存吃緊（8GB 同時跑大腦與克隆聲）就用 int8_float16；
+  # CPU 版用 int8，會慢不少。上線前先用 tools/asr_compare.py 拿阿公的真實錄音比一比。
+  #   model: paulpengtw/faster-whisper-Breeze-ASR-26
+  #   compute_type: int8_float16      # CPU：device: cpu、compute_type: int8
+  vad_min_silence_ms: 1000    # 句中停頓多久才算說完（長輩說話慢，太短會把一句切兩半）
+  beam_size: 5
+  hotwords: []                # 家人稱呼、地名、藥名，例如 [阿明, 阿嬤, 鹿港, 降血壓]
 
 llm:                          # 大腦
   # 預設用「本機模型」：不需要任何金鑰，對話文字也不會離開這台電腦。

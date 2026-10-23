@@ -108,6 +108,22 @@ Restart to apply.
 
 ---
 
+### 2.7 Optional — an elder who speaks Taiwanese Hokkien
+
+The default speech model listens for Mandarin. For an elder who speaks Taiwanese (or mixes it
+with Mandarin), set `asr.model` in `conf.yaml` to MediaTek's **Breeze-ASR-26** (Apache-2.0):
+
+```yaml
+asr:
+  model: paulpengtw/faster-whisper-Breeze-ASR-26
+  compute_type: int8_float16     # no GPU: device: cpu, compute_type: int8
+```
+
+It writes Taiwanese speech as Mandarin characters, which the AI understands; replies stay in
+Mandarin for now. The first start downloads about 3 GB. Compare models on 20–30 real clips of
+the elder first with `tools/asr_compare.py` (instructions at the top of the file), and add
+family names and places to `asr.hotwords` if they are often misheard.
+
 ## 3. Set the family voice (important)
 
 **No one's voice ships with this project** — you provide it:
