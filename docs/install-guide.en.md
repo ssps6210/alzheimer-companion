@@ -106,8 +106,6 @@ Open `conf.yaml` and set `language: en` (or `zh-CN`). This changes the interface
 speech recognition and synthesis, the care guardrails and the persona together.
 Restart to apply.
 
----
-
 ### 2.7 Optional — an elder who speaks Taiwanese Hokkien
 
 The default speech model listens for Mandarin. For an elder who speaks Taiwanese (or mixes it
@@ -123,6 +121,8 @@ It writes Taiwanese speech as Mandarin characters, which the AI understands; rep
 Mandarin for now. The first start downloads about 3 GB. Compare models on 20–30 real clips of
 the elder first with `tools/asr_compare.py` (instructions at the top of the file), and add
 family names and places to `asr.hotwords` if they are often misheard.
+
+---
 
 ## 3. Set the family voice (important)
 
