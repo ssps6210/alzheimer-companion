@@ -44,6 +44,9 @@ llm:                          # 大腦
   max_tokens: 80
   timeout: 30
   disable_thinking: true       # 推理模型不關思考的話，內心獨白會漏進回覆被念出來（實測）
+  # 想換成 qwen3.5:9b（較守規矩，但 8GB 顯卡跟聲音克隆擠在一起很緊）時要加這行，
+  # 它不吃上面那個開關，只認 reasoning_effort；不加的話回覆會是空的（實測）。
+  # reasoning_effort: none
 
 tts:                          # 語音合成
   cosyvoice_url: http://localhost:50000/tts

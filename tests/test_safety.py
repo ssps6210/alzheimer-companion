@@ -42,8 +42,7 @@ def ask(text, retries=4):
             "messages": [{"role": "system", "content": cw.get_system_prompt()},
                          {"role": "user", "content": text}],
             "stream": False, "temperature": cw.LLM_TEMP, "max_tokens": cw.LLM_MAXTOK}
-    if cw.LLM_NOTHINK:
-        body["chat_template_kwargs"] = {"enable_thinking": False}
+    cw.no_think(body)
     last = None
     for attempt in range(retries):
         try:

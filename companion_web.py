@@ -263,6 +263,20 @@ LLM_TEMP       = CFG["llm"]["temperature"]
 LLM_MAXTOK     = CFG["llm"]["max_tokens"]
 LLM_TIMEOUT    = CFG["llm"]["timeout"]
 LLM_NOTHINK    = CFG["llm"]["disable_thinking"]
+# 有些模型不吃 chat_template_kwargs（實測 Ollama 上的 qwen3.5:9b），要改送
+# reasoning_effort: "none" 才關得掉思考。預設留空——對不會思考的模型送這個欄位，
+# 不保證每一版 Ollama 都接受。
+LLM_REASONING_EFFORT = CFG["llm"].get("reasoning_effort") or ""
+
+
+def no_think(body):
+    """把「關掉思考」需要的欄位補進請求。每個呼叫 LLM 的地方都走這裡，才不會漏一處。"""
+    if LLM_NOTHINK:
+        # Nemotron-3、qwen3 instruct 吃這個；推理開著的話，內心獨白會被截斷後漏進回覆
+        body["chat_template_kwargs"] = {"enable_thinking": False}
+        if LLM_REASONING_EFFORT:
+            body["reasoning_effort"] = LLM_REASONING_EFFORT
+    return body
 COSY_URL       = CFG["tts"]["cosyvoice_url"]
 COSY_HEALTH    = CFG["tts"]["cosyvoice_health"]
 COSY_TIMEOUT   = CFG["tts"]["cosyvoice_timeout"]
@@ -428,8 +442,13 @@ _SCAM_REPLY = (_SAFETY.get("scam_reply") or
 # （「今天是星期六，我剛才說過了喔」）。整句換掉會連答案一起丟，所以按子句切開，
 # 只拿掉踩線的那一段。
 _REPEAT_WORDS = tuple(_SAFETY.get("repeat_words") or
-                      ("剛才說過", "剛剛說過", "我說過了", "你問過了", "你剛問過",
-                       "你剛剛問過", "你有問過", "你又問", "已經回答過", "你忘記了"))
+                      ("剛才說過", "剛剛說過", "我說過了", "你問過", "你剛問過",
+                       "你剛剛問過", "你又問", "已經回答過", "你忘記了", "你忘了"))
+# 說痛、說不舒服時，回覆一定要找人來看：實測模型會只說「喝口水，緩緩來」。
+# 回覆裡沒提到家人／醫生就在句尾補上這一句（被否定的「沒有不舒服」不算）。
+_PAIN_WORDS = tuple(_SAFETY.get("pain_words") or ("好痛", "很痛", "痛痛", "不舒服", "頭暈", "好暈"))
+_HELP_CUES = tuple(_SAFETY.get("help_cues") or ("家人", "醫生", "護士", "看看你", "叫人"))
+_PAIN_TAIL = _SAFETY.get("pain_tail") or "我請家人過來看看你喔。"
 # 長輩問「某某有沒有來」時，模型會用「我沒看到他來」這種觀察句偷渡斷言——
 # 人設寫明不准也照講（實測一字不差）。只在他問的是「有沒有」時才刪。
 _WHETHER_CUES = tuple(_SAFETY.get("whether_cues") or ("有沒有", "有來嗎", "來過嗎", "來了嗎", "是不是來過"))
@@ -459,6 +478,9 @@ def _drop_clauses(s, words):
     if len(kept) == len(parts):
         return s, False
     out = "".join(kept).strip(" ，,")
+    # 模型常在標點後加空白；刪掉一段之後會變成「阿公， 大家…」，念出來會頓一下
+    out = re.sub(r"([，。！？、；])\s+", r"\1", out)
+    out = re.sub(r"\s{2,}", " ", out)
     if out and out[-1] in "，,；;":
         out = out[:-1] + "。"
     return out, True
@@ -494,6 +516,9 @@ def finalize_reply(raw, user_text=""):
     if not s:
         return _SAFE_FALLBACK, True
     s, blocked = guard_reply(s)
+    if (not blocked and _PAIN_WORDS and _mentions(user_text or "", _PAIN_WORDS)
+            and not any(c.lower() in s.lower() for c in _HELP_CUES)):
+        s = s.rstrip() + ("" if s.rstrip()[-1:] in "。！？.!?" else "。") + _PAIN_TAIL
     return s, (trimmed or blocked)
 
 
@@ -756,6 +781,9 @@ def urgency_of(text, phrase_hit):
     # 可能在接詐騙電話：不看否定——「我沒有給他密碼」一樣代表有人在問
     if any(w.lower() in text.lower() for w in SCAM_WORDS):
         return "notice"
+    # 說痛、不舒服但沒說到胸口心臟：多半不是急症，但家人該知道（靜音）
+    if _mentions(text, _PAIN_WORDS):
+        return "notice"
     if phrase_hit:
         return phrase_hit.get("alert") or None
     return None
@@ -888,8 +916,7 @@ async def _fold_and_summarize(fold_msgs, prev_summary):
                   f"目前筆記：{prev_summary or '（無）'}\n\n新對話：\n{convo}\n\n更新後的筆記：")
         body = {"model": LLM_MODEL, "messages": [{"role": "user", "content": prompt}],
                 "stream": False, "temperature": 0.3, "max_tokens": 220}
-        if LLM_NOTHINK:
-            body["chat_template_kwargs"] = {"enable_thinking": False}
+        no_think(body)
         r = await run_in_threadpool(lambda: requests.post(
             f"{LLM_BASE_URL}/chat/completions",
             headers=({"Authorization": f"Bearer {LLM_API_KEY}"} if LLM_API_KEY else {}),
@@ -965,8 +992,7 @@ async def _daily_summary_text():
               f"長期記憶：{session_summary or '（無）'}\n\n今天對話：\n{convo}\n\n摘要：")
     body = {"model": LLM_MODEL, "messages": [{"role": "user", "content": prompt}],
             "stream": False, "temperature": 0.4, "max_tokens": 200}
-    if LLM_NOTHINK:
-        body["chat_template_kwargs"] = {"enable_thinking": False}
+    no_think(body)
     r = await run_in_threadpool(lambda: requests.post(
         f"{LLM_BASE_URL}/chat/completions",
         headers=({"Authorization": f"Bearer {LLM_API_KEY}"} if LLM_API_KEY else {}), json=body, timeout=LLM_TIMEOUT))
@@ -1090,8 +1116,7 @@ async def health():
             hbody = {"model": LLM_MODEL,
                      "messages": [{"role": "user", "content": "嗨"}],
                      "max_tokens": 1, "stream": False}
-            if LLM_NOTHINK:  # mirror the real request path
-                hbody["chat_template_kwargs"] = {"enable_thinking": False}
+            no_think(hbody)  # mirror the real request path
             r = requests.post(
                 f"{LLM_BASE_URL}/chat/completions",
                 headers=({"Authorization": f"Bearer {LLM_API_KEY}"} if LLM_API_KEY else {}),
@@ -1612,12 +1637,9 @@ async def interact(request: Request):
 
         body = {"model": LLM_MODEL, "messages": msgs, "stream": False,
                 "temperature": LLM_TEMP, "max_tokens": LLM_MAXTOK}
-        if LLM_NOTHINK:
-            # Disable reasoning. Nemotron-3 accepts this too (verified: reasoning→0,
-            # clean content). Critical: with reasoning ON, its 200-1000-char think
-            # doesn't fit max_tokens=80 → the truncated think LEAKS into content and
-            # 爺爺 hears the model's inner monologue (incl. "as a granddaughter…").
-            body["chat_template_kwargs"] = {"enable_thinking": False}
+        # Critical: with reasoning ON, a 200-1000-char think doesn't fit max_tokens
+        # → the truncated think LEAKS into content and 爺爺 hears the inner monologue.
+        no_think(body)
         try:
             r = await run_in_threadpool(lambda: requests.post(
                 f"{LLM_BASE_URL}/chat/completions",

@@ -99,7 +99,13 @@ safety:
   scam_reply: "Don't send any money and don't tell anyone your password. I'll ask the family to come and help. Let's wait a moment, okay?"
   # Clauses removed while the rest of the answer stays.
   repeat_words: ["i just told you", "i already told you", "you already asked",
-                 "you just asked", "you asked that", "as i said", "you forgot"]
+                 "you just asked", "you asked that", "you asked me that", "as i said",
+                 "you forgot"]
+  # Pain or feeling unwell: if the reply doesn't mention family or a doctor,
+  # this line is added, and family gets a silent heads-up.
+  pain_words: ["it hurts", "really hurts", "in pain", "feel sick", "feel unwell", "dizzy"]
+  help_cues: ["family", "doctor", "nurse", "someone to", "check on you"]
+  pain_tail: "I'll ask the family to come and check on you."
   # When he asks whether someone came, drop hedged claims about it.
   whether_cues: ["did", "has", "was", "come by", "come today", "visit"]
   claim_words: ["didn't see", "did not see", "probably not", "probably did",

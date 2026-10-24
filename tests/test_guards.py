@@ -178,7 +178,8 @@ def test_language_pack_overrides_every_guard_list(lang):
     for key in ("never_say", "death_pairs", "safe_fallback", "negation",
                 "urgent_words", "urgent_pairs", "outing_words", "outing_fallback",
                 "money_words", "money_fallback", "scam_words", "ask_cues",
-                "scam_reply", "repeat_words", "whether_cues", "claim_words"):
+                "scam_reply", "repeat_words", "whether_cues", "claim_words",
+                "pain_words", "help_cues", "pain_tail"):
         assert safety.get(key), f"lang/{lang}.yaml 的 safety 缺少 {key}"
 
 
@@ -195,6 +196,11 @@ TRIM = {
          "今天是星期六阿公，要不我們來喝口水？"),
         ("阿明昨天有沒有來看我？", "阿公，我沒看到阿明來過喔。大家都很惦記你呢，我先陪你好不好？",
          "阿公，大家都很惦記你呢，我先陪你好不好？"),
+        # 以下取自實機回覆：標點後的空白、「我記得你問過」都要處理乾淨
+        ("阿明昨天有沒有來看我？", "阿公， 我沒看到阿明來過喔。 大家都很惦記你喔，我先陪你好不好？",
+         "阿公，大家都很惦記你喔，我先陪你好不好？"),
+        ("今天禮拜幾？我剛剛是不是問過了？", "今天是星期六啊，阿公。我記得你問過， 要不要我陪你喝口水？",
+         "今天是星期六啊，阿公。"),
     ],
     "en": [
         ("What day is it? Did I ask already?", "It's Saturday. I already told you, remember? Shall we have some tea?",
@@ -239,3 +245,23 @@ def test_a_reply_trimmed_to_nothing_falls_back():
     cw = load("zh-TW")
     out, touched = cw.finalize_reply("我剛才說過了喔。", "今天幾號？")
     assert touched and out == cw._SAFE_FALLBACK
+
+
+@pytest.mark.parametrize("lang,user,reply", [
+    ("zh-TW", "我這裡好痛，很不舒服。", "阿公，我聽見你說痛，真的好擔心喔。要不我們先喝口水，緩緩來？"),
+    ("en", "My knee really hurts.", "Oh dear, that sounds sore. Shall we sit down for a bit?"),
+    ("zh-CN", "我这里好痛，很不舒服。", "爷爷，我听到你说痛，好担心哦。"),
+])
+def test_pain_reply_always_asks_family_to_come(lang, user, reply):
+    # 實測模型只說「喝口水，緩緩來」——說痛一定要找人來看
+    cw = load(lang)
+    out, _ = cw.finalize_reply(reply, user)
+    assert out.endswith(cw._PAIN_TAIL)
+    assert cw.urgency_of(user, None) in ("notice", "urgent")
+
+
+@pytest.mark.parametrize("lang,user", [("zh-TW", "我沒有不舒服啦"), ("en", "It doesn't hurt anymore")])
+def test_no_pain_tail_when_pain_is_negated(lang, user):
+    cw = load(lang)
+    reply = "太好了。" if lang != "en" else "That's good."
+    assert cw.finalize_reply(reply, user)[0] == reply
