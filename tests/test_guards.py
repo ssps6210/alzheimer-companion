@@ -177,7 +177,8 @@ def test_language_pack_overrides_every_guard_list(lang):
     safety = cw.LANG.get("safety") or {}
     for key in ("never_say", "death_pairs", "safe_fallback", "negation",
                 "urgent_words", "urgent_pairs", "outing_words", "outing_fallback",
-                "money_words", "money_fallback", "scam_words", "ask_cues"):
+                "money_words", "money_fallback", "scam_words", "ask_cues",
+                "scam_reply", "repeat_words", "whether_cues", "claim_words"):
         assert safety.get(key), f"lang/{lang}.yaml 的 safety 缺少 {key}"
 
 
@@ -185,3 +186,56 @@ def test_sanitize_strips_what_tts_would_read_aloud():
     cw = load("zh-TW")
     out = cw._sanitize_reply("**早安**🌞  今天`天氣`很好\n\n\n要喝水喔 ☀️")
     assert out == "早安 今天天氣很好\n要喝水喔"
+
+
+# ── 只刪那一句、答案留著（實測模型會把對的答案跟不該說的話黏在一起）──────
+TRIM = {
+    "zh-TW": [
+        ("今天禮拜幾？我剛剛是不是問過了？", "今天是星期六阿公，我剛才說過了喔。要不我們來喝口水？",
+         "今天是星期六阿公，要不我們來喝口水？"),
+        ("阿明昨天有沒有來看我？", "阿公，我沒看到阿明來過喔。大家都很惦記你呢，我先陪你好不好？",
+         "阿公，大家都很惦記你呢，我先陪你好不好？"),
+    ],
+    "en": [
+        ("What day is it? Did I ask already?", "It's Saturday. I already told you, remember? Shall we have some tea?",
+         "It's Saturday. Shall we have some tea?"),
+        ("Did Tom come by yesterday?", "I didn't see Tom come by. Everyone is thinking of you.",
+         "Everyone is thinking of you."),
+    ],
+    "zh-CN": [
+        ("今天星期几？我是不是问过了？", "今天是星期六，我刚才说过了哦。我们喝口水好不好？",
+         "今天是星期六，我们喝口水好不好？"),
+    ],
+}
+
+
+@pytest.mark.parametrize("lang,user,reply,want",
+                         [(l, *c) for l in LANGS for c in TRIM[l]])
+def test_offending_clause_is_dropped_but_answer_kept(lang, user, reply, want):
+    cw = load(lang)
+    out, touched = cw.finalize_reply(reply, user)
+    assert touched
+    assert out == want
+
+
+@pytest.mark.parametrize("lang", LANGS)
+def test_claims_kept_when_he_did_not_ask_whether(lang):
+    # 沒在問「有沒有」時，「好像有」這類話可能只是普通聊天，不刪
+    cw = load(lang)
+    text = {"zh-TW": "外面好像有太陽喔。", "en": "I think he came to fix the roof once.",
+            "zh-CN": "外面好像有太阳哦。"}[lang]
+    assert cw.finalize_reply(text, "今天天氣怎樣" if lang != "en" else "How's the weather")[0] == text
+
+
+@pytest.mark.parametrize("lang,text", _params("scam"))
+def test_scam_gets_the_fixed_reply_not_the_model(lang, text):
+    # 實測 4 次裡模型沒有一次叫他先別轉帳——這題由程式直接回
+    cw = load(lang)
+    out = cw.fixed_reply(text)
+    assert out == cw._SCAM_REPLY
+
+
+def test_a_reply_trimmed_to_nothing_falls_back():
+    cw = load("zh-TW")
+    out, touched = cw.finalize_reply("我剛才說過了喔。", "今天幾號？")
+    assert touched and out == cw._SAFE_FALLBACK

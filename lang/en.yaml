@@ -94,6 +94,17 @@ safety:
     - you've won
     - prize
     - the police said
+  # On a suspected scam the program answers with this line itself (the model is
+  # not asked), and family is notified as usual.
+  scam_reply: "Don't send any money and don't tell anyone your password. I'll ask the family to come and help. Let's wait a moment, okay?"
+  # Clauses removed while the rest of the answer stays.
+  repeat_words: ["i just told you", "i already told you", "you already asked",
+                 "you just asked", "you asked that", "as i said", "you forgot"]
+  # When he asks whether someone came, drop hedged claims about it.
+  whether_cues: ["did", "has", "was", "come by", "come today", "visit"]
+  claim_words: ["didn't see", "did not see", "probably not", "probably did",
+                "i think he came", "i think she came", "been busy", "hasn't come",
+                "he came", "she came", "he didn't", "she didn't"]
 
   # Negation, so "I did not fall" is not read as a fall.
   # English negation sits further from the keyword than Chinese does

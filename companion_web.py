@@ -419,6 +419,82 @@ _MONEY_FALLBACK = (_SAFETY.get("money_fallback") or
 SCAM_WORDS = tuple(_SAFETY.get("scam_words") or
                    ("匯款", "匯錢", "轉帳", "密碼", "提款卡", "金融卡", "驗證碼",
                     "保證金", "監管帳戶", "中獎", "解除分期", "警察說", "檢察官"))
+# 長輩說到疑似詐騙時，不交給模型：實測 qwen3:4b-instruct 4 次裡沒有一次叫他先別轉帳，
+# 還說過「警察是來幫忙的」。這句由程式直接回，每次都一樣，同時照常通知家人。
+_SCAM_REPLY = (_SAFETY.get("scam_reply") or
+               "先不要轉帳，也不要把密碼告訴任何人喔。我請家人過來幫你看，我們先等一下好不好？")
+
+# 只刪掉「那一句」、答案留著的情況：模型常把對的答案跟不該說的話黏在一起
+# （「今天是星期六，我剛才說過了喔」）。整句換掉會連答案一起丟，所以按子句切開，
+# 只拿掉踩線的那一段。
+_REPEAT_WORDS = tuple(_SAFETY.get("repeat_words") or
+                      ("剛才說過", "剛剛說過", "我說過了", "你問過了", "你剛問過",
+                       "你剛剛問過", "你有問過", "你又問", "已經回答過", "你忘記了"))
+# 長輩問「某某有沒有來」時，模型會用「我沒看到他來」這種觀察句偷渡斷言——
+# 人設寫明不准也照講（實測一字不差）。只在他問的是「有沒有」時才刪。
+_WHETHER_CUES = tuple(_SAFETY.get("whether_cues") or ("有沒有", "有來嗎", "來過嗎", "來了嗎", "是不是來過"))
+_CLAIM_WORDS = tuple(_SAFETY.get("claim_words") or
+                     ("沒看到", "沒有看到", "應該沒有", "應該有", "好像有", "好像沒有",
+                      "沒空來", "有來過", "沒有來", "沒來過", "他來了", "她來了"))
+
+
+_CLAUSE_RE = re.compile(r"[^，。！？!?,.~～…；;]+[，。！？!?,.~～…；;]*")
+
+
+def _drop_clauses(s, words):
+    """拿掉含 words 的子句，其餘照原樣接回。回 (新字串, 是否有刪)。
+
+    被刪的子句如果以逗號結尾，就一路刪到這個句子結束：「I already told you,
+    remember?」只刪前半會留下一句「remember?」——那正是在考他記不記得。"""
+    if not s or not words:
+        return s, False
+    low = [w.lower() for w in words]
+    parts = _CLAUSE_RE.findall(s)
+    kept, skipping = [], False
+    for c in parts:
+        if skipping or any(w in c.lower() for w in low):
+            skipping = not c.rstrip()[-1:] in "。！？!?.…~～"
+            continue
+        kept.append(c)
+    if len(kept) == len(parts):
+        return s, False
+    out = "".join(kept).strip(" ，,")
+    if out and out[-1] in "，,；;":
+        out = out[:-1] + "。"
+    return out, True
+
+
+def trim_reply(reply, user_text=""):
+    """刪掉踩線的子句（不是整句換掉）。回 (新回覆, 是否有刪)。"""
+    reply, a = _drop_clauses(reply, _REPEAT_WORDS)
+    b = False
+    if any(c.lower() in (user_text or "").lower() for c in _WHETHER_CUES):
+        reply, b = _drop_clauses(reply, _CLAIM_WORDS)
+    return reply, (a or b)
+
+
+def fixed_reply(text):
+    """不交給模型、由程式直接回的情況：家人審定的喪親回答、疑似詐騙。回最終要說的句子或 None。
+
+    家人寫的喪親回答一樣要過 guard_reply（家人可能不小心寫進「過世」）；
+    詐騙固定句是程式自己的、本來就在談錢（「先不要轉帳」），不能被錢的防線換掉。"""
+    r = bereavement_reply(text)
+    if r:
+        return guard_reply(r)[0]
+    if any(w.lower() in (text or "").lower() for w in SCAM_WORDS):
+        return _SCAM_REPLY
+    return None
+
+
+def finalize_reply(raw, user_text=""):
+    """模型原始輸出 → 長輩真的會聽到的那句。/interact 與 test_safety 共用這一條路。
+    回 (回覆, 是否動過)。刪完變空的就交給 guard_reply 換成安撫語。"""
+    s = _sanitize_reply(raw)
+    s, trimmed = trim_reply(s, user_text)
+    if not s:
+        return _SAFE_FALLBACK, True
+    s, blocked = guard_reply(s)
+    return s, (trimmed or blocked)
 
 
 def guard_reply(s):
@@ -1525,11 +1601,10 @@ async def interact(request: Request):
     if len(text) < 2:
         return JSONResponse({"type": "no_speech"})
 
-    # 找已過世的家人：用家人審定的那一句，不交給模型臨場編
-    reply = bereavement_reply(text)
+    # 找已過世的家人、疑似詐騙：用固定的那一句，不交給模型臨場編
+    reply = fixed_reply(text)
     if reply:
-        print(f"［喪親固定回答］→ {reply}")
-        reply, _ = guard_reply(reply)
+        print(f"［固定回答］→ {reply}")
     else:
         msgs = [{"role": "system", "content": get_system_prompt()}]
         msgs.extend(history[-MAX_HISTORY:])
@@ -1550,8 +1625,7 @@ async def interact(request: Request):
                 json=body, timeout=LLM_TIMEOUT))
             r.raise_for_status()
             reply = (r.json()["choices"][0]["message"].get("content") or "").strip()
-            reply = _sanitize_reply(reply)
-            reply, blocked = guard_reply(reply)
+            reply, blocked = finalize_reply(reply, text)
             if blocked:
                 # 家人該知道模型差點說出死訊或叫長輩出門——這代表 persona 需要檢查
                 print(f"⚠ 已攔截不該說出口的回覆（含死訊、出門邀約或錢與密碼），改用安撫語")

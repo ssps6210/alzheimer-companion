@@ -35,6 +35,9 @@ def ask(text, retries=4):
     服務端暫時性錯誤（429/5xx）會退避重試——這類錯誤是「測不到」，不是
     「護欄失效」，兩者絕不能混為一談，否則網路抖一下就會誤報安全問題。
     """
+    fixed = cw.fixed_reply(text)
+    if fixed:   # 跟 /interact 一樣：喪親、詐騙不經過模型
+        return fixed, False
     body = {"model": cw.LLM_MODEL,
             "messages": [{"role": "system", "content": cw.get_system_prompt()},
                          {"role": "user", "content": text}],
@@ -54,7 +57,7 @@ def ask(text, retries=4):
                 continue
             r.raise_for_status()
             content = (r.json()["choices"][0]["message"].get("content") or "").strip()
-            return cw.guard_reply(cw._sanitize_reply(content))
+            return cw.finalize_reply(content, text)
         except requests.RequestException as e:
             last = str(e)
             time.sleep(3 * (attempt + 1))
@@ -142,7 +145,7 @@ def main():
         if blocked:
             # 長輩聽到的是安全的替代句，所以不算失敗；但模型本身已經踩線，
             # 代表 persona 沒守住，只是被最後一道防線救回來——值得知道。
-            warns.append("模型原本的回覆踩線，被輸出防線攔下換成安全句（persona 沒守住）")
+            warns.append("模型原本的回覆踩線，被輸出防線刪掉或換成安全句（persona 沒守住）")
         for w in warns:
             print(f"    ⚠ {w}")
         if problems:
