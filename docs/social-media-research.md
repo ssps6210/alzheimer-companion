@@ -111,7 +111,7 @@
 
 - **受眾在不在**：兩種都在。
   - 照顧者：r/dementia、r/Alzheimers、r/AgingParents、r/CaregiverSupport、r/eldercare
-  - 技術／自架：r/selfhosted、r/LocalLLaMA、r/opensource、r/SideProject
+  - 技術／自架：r/selfhosted、r/LocalLLaMA、r/SideProject（r/opensource 於 2026 年 10 月起禁止 AI 相關專案，不建議投稿；見 `reports/AI 社群內容自動化工作流.md`）
 - **規則**：
   - Reddit 長期的 Reddiquette 經驗法則是 **9:1**——你的投稿中自家內容最多約十分之一，只發自家東西的帳號會被當成 spam。
   - **每個 subreddit 自訂規則，以側欄與置頂為準**。第三方 2026 年的統計顯示，抽樣的 64 個版裡約 34% 完全禁止自我推廣。照顧者版成員對露骨推銷特別反感。（r/dementia 的實際版規本次無法直接讀取，**發文前必看並先發 modmail 詢問**）
